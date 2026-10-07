@@ -82,7 +82,7 @@ export function SyncStatusModal() {
       <div className="sync-line" style={{ marginTop: 14 }}>
         <span>上次同步时间：{formatDateTime(sync.lastSyncAt)}</span>
         <span className="sync-size">
-          {fileSizeText(sync.transferred)} / {fileSizeText(sync.total)}
+            {sync.total > 0 ? `${sync.transferred} / ${sync.total}` : fileSizeText(sync.transferred)}
         </span>
       </div>
 
@@ -95,7 +95,7 @@ export function SyncStatusModal() {
         {busy || elapsedSec > 0 ? (
           <div className="sync-line" style={{ marginTop: 12 }}>
             <span>已用时：{elapsedText}{active ? `（当前：${activeSec} 秒）` : ""}</span>
-            <span className="sync-size">{speed > 0 ? `${fileSizeText(speed)}/s` : "—"}</span>
+            <span className="sync-size">{speed > 0 ? `${speed > 1024 ? fileSizeText(speed) : Math.round(speed * 10) / 10} /秒` : "—"}</span>
           </div>
         ) : null}
 
