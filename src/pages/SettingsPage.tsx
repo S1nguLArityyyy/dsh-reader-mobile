@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { exchangeCode as baiduExchangeCode } from '../data/baidu-open'
 import {
   AlertTriangle,
   Cloud,
@@ -34,6 +35,8 @@ export function SettingsPage() {
   const [nameDraft, setNameDraft] = useState<string | null>(null)
   // WebDAV 表单：null = 跟随设置（密码不回传，所以永远从空开始）
   const [davDraft, setDavDraft] = useState<{ url: string; username: string; password: string } | null>(null)
+  const [baiduCode, setBaiduCode] = useState('')
+  const [baiduMsg, setBaiduMsg] = useState('')
   const [davBusy, setDavBusy] = useState(false)
 
   if (!settings) return <div className="page" />
@@ -212,10 +215,41 @@ export function SettingsPage() {
             </div>
             <div className="setting-control">
               <span className={`sync-dot${sync.loggedIn ? ' on' : ''}`} />
-              {syncSettings.provider === 'baidu' && sync.loggedIn ? (
-                <button className='btn btn-ghost btn-sm' onClick={() => void logoutSync()}>
-                  退出登录
-                </button>
+              {syncSettings.provider === 'baidu' ? (
+                <>
+                  <input
+                    className="input"
+                    style={{ width: 210 }}
+                    placeholder="粘贴授权页上的 32 位授权码"
+                    value={baiduCode}
+                    onChange={(e) => setBaiduCode(e.target.value)}
+                  />
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => {
+                      setBaiduMsg('换取中…')
+                      void baiduExchangeCode(baiduCode).then((result) => {
+                        setBaiduMsg(result.message)
+                        if (result.ok) {
+                          setBaiduCode('')
+                          void connectSync()
+                        }
+                      })
+                    }}
+                  >
+                    保存授权码
+                  </button>
+                  {baiduMsg ? (
+                    <span className="setting-hint" style={{ fontSize: 12, maxWidth: 240 }}>
+                      {baiduMsg}
+                    </span>
+                  ) : null}
+                  {sync.loggedIn ? (
+                    <button className="btn btn-ghost btn-sm" onClick={() => void logoutSync()}>
+                      退出登录
+                    </button>
+                  ) : null}
+                </>
               ) : null}
               {syncSettings.provider === 'webdav' ? (
                 <button className="btn btn-ghost btn-sm" onClick={() => void logoutSync()}>

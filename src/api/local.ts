@@ -1,8 +1,7 @@
+import { accessToken as baiduToken, diagnose as baiduOpenDiagnose, readFile as baiduOpenReadFile, readJson as baiduOpenReadJson } from '../data/baidu-open'
 import { unzipSync } from 'fflate'
 import {
   connect as baiduConnect,
-  readFile as baiduReadFile,
-  readJson as baiduReadJson,
   diagnose as baiduDiagnose,
   readSession
 } from '../data/baidu'
@@ -370,7 +369,14 @@ async function downloadBaiduBooks(): Promise<SyncState> {
   const remote = '/' + String(settings.sync.remoteDir || 'DshReader').replace(/^\/+|\/+$/g, '')
   const session = readSession()
   if (!session) return writeSyncState({ message: '请先点「连接」登录百度网盘' })
-  const manifest = await baiduReadJson(`${remote}/manifest.json`)
+  // 走开放平台（access_token）：网页会话下载需要网页签名 sign，是死路 ✗
+  if (!(await baiduToken())) {
+    const report = await baiduOpenDiagnose().catch(() => 'n/a')
+    return writeSyncState({
+      message: `百度网盘还没授权：设置→同步→百度网盘→点「连接」拿授权码粘回来。诊断：${report}`
+    })
+  }
+  const manifest = await baiduOpenReadJson(`${remote}/manifest.json`)
   const files = ((manifest?.files ?? {}) as Record<string, { title?: string; size?: number }>) || {}
   const keys = Object.keys(files)
   if (keys.length === 0) {
@@ -389,7 +395,7 @@ async function downloadBaiduBooks(): Promise<SyncState> {
       transferred: done,
       total: keys.length
     })
-    const bytes = await baiduReadFile(`${remote}/books/${encodeURIComponent(key)}.epub`).catch(() => null)
+    const bytes = await baiduOpenReadFile(`${remote}/books/${encodeURIComponent(key)}.epub`).catch(() => null)
     if (!bytes) {
       failed.push(title)
       continue
@@ -603,7 +609,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '1.4.5',
+        version: '1.5.0',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
