@@ -410,7 +410,6 @@ export function LibraryPage() {
                     {todayMinutes}/{goalMinutes} 分钟
                   </div>
                 </ProgressRing>
-                <div className="today-goal-sub">全书已读 {percentText(bookProgress)}%</div>
               </div>
             </div>
 
@@ -419,7 +418,7 @@ export function LibraryPage() {
               <button
                 className="continue-banner"
                 style={{ background: bookAccentColor(continueBook) ?? 'var(--primary)' }}
-                onClick={() => void openReader(continueBook.id)}
+                onClick={() => openDetail(continueBook.id)}
               >
                 <span className="continue-cover">
                   <BookCover book={continueBook} />
