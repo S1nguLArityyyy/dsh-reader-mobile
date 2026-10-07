@@ -25,3 +25,20 @@ createRoot(container).render(
     <App />
   </ErrorBoundary>
 )
+
+/*
+ * 自动同步（手机端此前【完全没实现】✗ 开关能拨但没人读它 ✓）
+ *   · 启动 3 秒后跑一次（等书库/设置加载完 ✓）
+ *   · 之后按设置里的间隔定时跑 ✓（每分钟检查一次设置，改了不用重启 ✓）
+ */
+void (async () => {
+  const { useApp } = await import('./store/app')
+  const runOnce = (): void => {
+    const state = useApp.getState()
+    if (!state.settings?.sync.auto) return
+    console.info('[自动同步] 开始一轮')
+    void state.runSync?.()
+  }
+  window.setTimeout(runOnce, 3000)
+  window.setInterval(runOnce, 60_000)
+})()
