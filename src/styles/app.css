@@ -2796,19 +2796,20 @@
   }
 
   .today-goal {
-    flex: 0 0 100%;
-    flex-direction: row;
+    /* 旧布局残留（flex 行 + 上边框 + 左内边距）已清掉：现在卡片是 grid，圆环要在自己那半居中 */
     align-items: center;
-    justify-content: flex-start;
-    gap: 16px;
-    padding: 12px 0 14px 14px;
-    border-top: 1px solid rgba(255, 255, 255, 0.18);
+    justify-content: center;
+    gap: 6px;
+    padding: 0;
+    border-top: none;
   }
 
-  /* 目标环在手机上缩一档（JSX 里写死 124px，这里连内层 SVG 一起缩放） */
+  /* 目标环撑满它那一半：旧规则把它锁死在 96px !important，这里必须同样用 !important 覆盖 */
   .today-goal .ring {
-    width: 96px !important;
-    height: 96px !important;
+    width: 100% !important;
+    max-width: 168px !important;
+    height: auto !important;
+    aspect-ratio: 1;
   }
 
   .today-goal .ring svg {
