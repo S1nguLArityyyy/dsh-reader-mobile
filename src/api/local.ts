@@ -59,8 +59,48 @@ async function loadLibrary(): Promise<ExportedLibrary> {
     const response = await fetch('data/library.json')
     if (!response.ok) throw new Error(`读取书籍数据失败：HTTP ${response.status}`)
     cache = (await response.json()) as ExportedLibrary
+    seedDemoReading(cache.book.id)
   }
   return cache
+}
+
+/**
+ * 演示用阅读记录（用户要求"伪造一个记录看效果"）。
+ *
+ * 只在**第一次**打开时写入 localStorage：今天 1 分 57 秒、昨天 1 分 40 秒、
+ * 进度 18%（读到第 13 章）。之后真实阅读会在这些记录上继续累加。
+ * 想清空：删掉应用数据，或在开发者工具里清 localStorage。
+ */
+function seedDemoReading(bookId: string): void {
+  const DEMO_KEY = 'dsh.demoSeeded'
+  if (localStorage.getItem(DEMO_KEY)) return
+  localStorage.setItem(DEMO_KEY, '1')
+
+  const now = Date.now()
+  const today = dayKey()
+  const yesterday = new Date(now - 86400000).toISOString().slice(0, 10)
+
+  const all = readProgress()
+  if (!all[bookId]) {
+    all[bookId] = {
+      bookId,
+      percent: 0.18,
+      chapterIndex: 12,
+      chapterTitle: '第 13 章',
+      scrollRatio: 0.42,
+      updatedAt: now,
+      deviceId: 'mobile-local',
+      rev: 1
+    }
+    writeProgress(all)
+  }
+
+  const rows = readSessions()
+  if (rows.length === 0) {
+    rows.push({ bookId, day: today, seconds: 117 })
+    rows.push({ bookId, day: yesterday, seconds: 100 })
+    writeSessions(rows)
+  }
 }
 
 function toBook(data: ExportedLibrary): Book {
