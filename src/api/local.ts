@@ -1,3 +1,6 @@
+import { unzipSync } from 'fflate'
+import { getBook, type StoredBook } from '../data/db'
+import { readChapterFromZip } from '../data/epub'
 import { coverUrlOf, importEpubFile, pickEpubFile } from '../data/import'
 import { listBooks } from '../data/db'
 import type {
@@ -7,7 +10,8 @@ import type {
   Progress,
   Settings,
   StatsPayload,
-  SyncState
+  SyncState,
+  TocNode
 } from '@shared/types'
 
 /**
@@ -295,13 +299,110 @@ const idleSync: SyncState = {
   message: '手机端本地模式：网盘同步尚未接入'
 }
 
+/* ---------- 本机导入的书：IndexedDB 取字节 → zip → 章节 ---------- */
+const zipCache = new Map<string, Map<string, Uint8Array>>()
+const urlCache = new Map<string, string>()
+
+async function loadImported(bookId: string): Promise<StoredBook | null> {
+  if (!bookId.startsWith('sha1:')) return null
+  try {
+    return (await getBook(bookId)) ?? null
+  } catch {
+    return null
+  }
+}
+
+async function zipOf(book: StoredBook): Promise<Map<string, Uint8Array>> {
+  const cached = zipCache.get(book.id)
+  if (cached) return cached
+  const files = new Map<string, Uint8Array>(Object.entries(unzipSync(new Uint8Array(book.epub))))
+  zipCache.set(book.id, files)
+  return files
+}
+
+/** zip 条目 → blob URL（缓存：同一张图只建一次，避免内存泄漏） */
+function blobUrlOf(files: Map<string, Uint8Array>, bookId: string): (name: string) => string {
+  return (name: string) => {
+    const key = bookId + '|' + name
+    const cached = urlCache.get(key)
+    if (cached) return cached
+    const bytes = files.get(name)
+    if (!bytes) return ''
+    const url = URL.createObjectURL(new Blob([bytes as unknown as BlobPart]))
+    urlCache.set(key, url)
+    return url
+  }
+}
+
+function toImportedBook(book: StoredBook): Book {
+  const base = { } as Book
+  return {
+    ...base,
+    id: book.id,
+    title: book.title,
+    metaTitle: book.title,
+    author: book.author,
+    description: book.description,
+    format: 'epub',
+    fileName: book.fileName,
+    filePath: '',
+    fileSize: book.fileSize,
+    contentHash: book.id.replace(/^sha1:/, ''),
+    coverFile: book.cover ? URL.createObjectURL(book.cover) : null,
+    coverColor: null,
+    chapterCount: book.chapterHrefs.length,
+    chapterChars: [],
+    wordCount: book.wordCount,
+    volume: null,
+    seriesKey: null,
+    manualSeries: null,
+    addedAt: book.addedAt,
+    lastOpenedAt: null,
+    hidden: false,
+    syncUpload: false
+  }
+}
+
+/** 把存储的目录树拍平成 app 需要的形状：href → chapterHrefs 里的下标（比按顺序猜准） */
+function flatTocOf(book: StoredBook): Array<{ id: string; label: string; chapterIndex: number; level: number }> {
+  const out: Array<{ id: string; label: string; chapterIndex: number; level: number }> = []
+  const idxOf = (href: string): number => {
+    const bare = href.split('#')[0]
+    const i = book.chapterHrefs.indexOf(bare)
+    if (i >= 0) return i
+    const name = bare.split('/').pop() ?? ''
+    return book.chapterHrefs.findIndex((h) => h.split('/').pop() === name)
+  }
+  const walk = (nodes: TocNode[], level: number): void => {
+    for (const node of nodes) {
+      const label = (node.label ?? '').trim()
+      if (label) {
+        const i = node.href ? idxOf(node.href) : -1
+        out.push({ id: 'toc-' + out.length, label, chapterIndex: i >= 0 ? i : out.length, level })
+      }
+      if (node.children?.length) walk(node.children, level + 1)
+    }
+  }
+  walk(book.toc, 0)
+  if (out.length === 0) {
+    book.chapterHrefs.forEach((_href, i) => {
+      out.push({ id: 'toc-' + i, label: '第 ' + (i + 1) + ' 章', chapterIndex: i, level: 0 })
+    })
+  }
+  return out
+}
+
+function chapterLabelOf(book: StoredBook, index: number): string {
+  const hit = flatTocOf(book).find((entry) => entry.chapterIndex === index)
+  return hit ? hit.label : '第 ' + (index + 1) + ' 章'
+}
 export function createLocalApi(): unknown {
   const listeners = new Set<() => void>()
 
   return {
     app: {
       info: async () => ({
-        version: '0.9.11',
+        version: '0.9.12',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -387,6 +488,20 @@ export function createLocalApi(): unknown {
 
     reader: {
       open: async (bookId: string): Promise<BookOpenPayload> => {
+        // 本机导入的书（sha1: 开头）走 IndexedDB + zip
+        const imported = await loadImported(bookId)
+        if (imported) {
+          return {
+            book: toImportedBook(imported),
+            toc: flatTocOf(imported),
+            chapters: imported.chapterHrefs.map((href, i) => ({
+              index: i,
+              label: chapterLabelOf(imported, i),
+              href
+            })),
+            progress: readProgress()[bookId] ?? null
+          }
+        }
         const data = await loadLibrary()
         const book = toBook(data)
         const progress = readProgress()[bookId] ?? null
@@ -401,7 +516,19 @@ export function createLocalApi(): unknown {
           progress
         }
       },
-      chapter: async (_bookId: string, index: number): Promise<ChapterPayload> => {
+      chapter: async (bookId: string, index: number): Promise<ChapterPayload> => {
+        const imported = await loadImported(bookId)
+        if (imported) {
+          const files = await zipOf(imported)
+          const href = imported.chapterHrefs[index] ?? imported.chapterHrefs[0]
+          const { html } = await readChapterFromZip(files, imported.opfDir, href, blobUrlOf(files, imported.id))
+          return {
+            index,
+            label: chapterLabelOf(imported, index),
+            total: imported.chapterHrefs.length,
+            html
+          }
+        }
         const data = await loadLibrary()
         const chapter = data.chapters[index] ?? data.chapters[0]
         return {
