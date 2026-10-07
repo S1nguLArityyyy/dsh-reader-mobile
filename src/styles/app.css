@@ -2827,6 +2827,123 @@
     font-size: 13.5px;
   }
 
+  /* ================= 底部毛玻璃导航 BottomGlassTabBar =================
+     规格：全宽 fixed 贴底、顶部两角 16px 圆角、72px 高 + 安全区、
+     毛玻璃 rgba(255,255,255,.72) + blur(20px)、顶部高光描边、微弱上浮阴影。
+     （旧的 .mobile-nav* 规则已废弃不再使用，保留在文件里不影响渲染） */
+  .glass-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    z-index: 99;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    height: calc(72px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    border-radius: 16px 16px 0 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.05);
+  }
+
+  [data-theme='dark'] .glass-tabbar {
+    background: rgba(26, 29, 34, 0.72);
+    border-top-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.35);
+  }
+
+  .glass-tab {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border: none;
+    background: transparent;
+    color: #868e96;
+    font-family: inherit;
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.25s ease, transform 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .glass-tab.active {
+    color: #226be8;
+  }
+
+  /* 点击反馈：轻微缩小回弹 */
+  .glass-tab:active {
+    transform: scale(0.95);
+  }
+
+  .glass-tab-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+  }
+
+  .glass-tab-icon svg {
+    width: 24px;
+    height: 24px;
+    /* 线性图标，不填充 */
+    fill: none;
+    stroke-width: 1.8;
+  }
+
+  .glass-tab-label {
+    font-size: 12px;
+  }
+
+  /* 选中光晕：主色低透明度的柔和圆形扩散，浮现后消失，不闪烁 */
+  .glass-tab-halo {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 48px;
+    height: 48px;
+    margin: -24px 0 0 -24px;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      rgba(34, 107, 232, 0.22) 0%,
+      rgba(34, 107, 232, 0.1) 45%,
+      rgba(34, 107, 232, 0) 72%
+    );
+    animation: glass-halo 0.6s ease-out both;
+    pointer-events: none;
+  }
+
+  @keyframes glass-halo {
+    from {
+      transform: scale(0.5);
+      opacity: 0;
+    }
+    45% {
+      opacity: 1;
+    }
+    to {
+      transform: scale(1.4);
+      opacity: 0;
+    }
+  }
+
+  /* 底部要给新导航留位置（72px + 安全区） */
+  .page {
+    padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+
   /* ---------- 书架：一行两三本 ---------- */
   .book-grid {
     grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
