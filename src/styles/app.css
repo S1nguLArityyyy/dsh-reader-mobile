@@ -3942,3 +3942,11 @@
 .page {
   padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
 }
+/* 探路测试页（类名是 .probe，之前写成 .probe-page 所以没生效）：底部留白，内容能滚到底 */
+.probe {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.probe-body {
+  padding-bottom: 24px;
+}

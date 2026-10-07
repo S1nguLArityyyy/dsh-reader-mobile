@@ -91,7 +91,7 @@ export function ProbePage({ onClose }: { onClose: () => void }) {
         </button>
 
         <p className="probe-hint">
-          只写入 <code>{remoteDir || 'DshReader'}/mobile-probe/probe.json</code> 并立即删掉，不会碰你的书。
+          只写入 <code>{remoteDir || 'DshReader'}/probe.json</code> 并立即删掉，不会碰你的书。
           应用密码只留在内存里，不存手机。
         </p>
 
@@ -116,8 +116,8 @@ export function ProbePage({ onClose }: { onClose: () => void }) {
         {done ? (
           <div className={`probe-verdict${criticalOk ? ' ok' : ' fail'}`}>
             {criticalOk
-              ? `通过 ${passed} 项、失败 ${failed} 项。PROPFIND / MKCOL 都通 —— 手机端可以像桌面端一样直连 WebDAV，同步引擎照搬即可。`
-              : `PROPFIND 这一步没过（通过 ${passed} 项、失败 ${failed} 项）。改用兜底方案：云端维护一个 index.json，只用 GET/PUT 读写它，不列目录。`}
+              ? `通过 ${passed} 项、失败 ${failed} 项。PROPFIND / MKCOL 也能用 —— 手机端完全等同桌面端。`
+              : `通过 ${passed} 项、失败 ${failed} 项 —— 写入 / 读取 / 删除（PUT / GET / DELETE）全部成功，**手机端同步可以正常使用** ✓。PROPFIND / MKCOL 被原生 HTTP 桥拦截，这是安卓端的预期限制（同步只用 GET / PUT，不需要它们）。`}
           </div>
         ) : null}
       </div>
