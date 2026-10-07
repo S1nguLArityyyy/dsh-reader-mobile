@@ -600,7 +600,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '1.3.4',
+        version: '1.3.5',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -863,7 +863,9 @@ export function createLocalApi(): unknown {
           message: result.message
         })
       },
-      run: () => runSync(),
+      run: () =>
+        // 百度网盘：立即同步先等同于「拉取云端书籍」（进度合并那套是 WebDAV 的文件格式，后续再统一）
+        readSettings().sync.provider === 'baidu' ? downloadBaiduBooks() : runSync(),
       cancel: async () => writeSyncState({ message: '已取消' }),
       downloadAll: () =>
           readSettings().sync.provider === 'baidu' ? downloadBaiduBooks() : downloadCloudBooks(),
