@@ -391,17 +391,23 @@ export function ReaderPage() {
     [mode, pages, schedulePersist]
   )
 
-  const onBarMouseDown = useCallback(
-    (e: React.MouseEvent) => {
+  const onBarPointerDown = useCallback(
+    (e: React.PointerEvent) => {
       e.preventDefault()
+      // 手机上**没有鼠标**：只挂 onMouseDown 的话手指根本拖不动进度条（用户反馈过），
+      // 必须用 Pointer Events（鼠标 / 触摸 / 触控笔通用）。
       dragSeek(e.clientX)
-      const onMove = (ev: MouseEvent): void => dragSeek(ev.clientX)
+      const target = e.currentTarget as HTMLElement
+      target.setPointerCapture?.(e.pointerId)
+      const onMove = (ev: PointerEvent): void => dragSeek(ev.clientX)
       const onUp = (): void => {
-        window.removeEventListener('mousemove', onMove)
-        window.removeEventListener('mouseup', onUp)
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        window.removeEventListener('pointercancel', onUp)
       }
-      window.addEventListener('mousemove', onMove)
-      window.addEventListener('mouseup', onUp)
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+      window.addEventListener('pointercancel', onUp)
     },
     [dragSeek]
   )
@@ -573,7 +579,12 @@ export function ReaderPage() {
           <ChevronLeft size={17} />
         </button>
         <span className="reader-foot-pct">本章 {percentText(chapterRatio)}%</span>
-        <div className="reader-progress" ref={barRef} onMouseDown={onBarMouseDown} title="按住拖动可快速定位">
+        <div
+          className="reader-progress"
+          ref={barRef}
+          onPointerDown={onBarPointerDown}
+          title="按住拖动可快速定位"
+        >
           <i style={{ width: `${percentText(chapterRatio)}%` }} />
           <span className="reader-progress-knob" style={{ left: `${percentText(chapterRatio)}%` }} />
         </div>

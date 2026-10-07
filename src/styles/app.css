@@ -2671,6 +2671,19 @@
     display: none;
   }
 
+  /* 进度条：拖它的时候别让浏览器把触摸当成滚动/翻页（不然拖不动） */
+  .reader-progress {
+    touch-action: none;
+    min-width: 0;
+  }
+
+  /* 触摸目标别太小：进度条本身加高一点更好拖 */
+  .reader-progress::before {
+    top: 50%;
+    transform: translateY(-50%);
+    height: 6px;
+  }
+
   /*
    * 阅读区留白：设置里的 36px 在 390 宽的屏上太浪费（一行装不下几个字）。
    * --reader-padding 是内联样式给的变量，这里在**消费它的元素自己身上**重设，
