@@ -2739,6 +2739,37 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  /*
+   * 弹窗内容不许横向溢出 —— 这是「详情页显示不全」的真正原因：
+   * 窄屏下只要有一处 min-width:auto 没压住（详情页顶部那个文字块就是），
+   * 整块内容就会把弹窗撑得比屏幕宽，右侧的值、文字、文件名全被切掉。
+   */
+  .modal,
+  .modal-body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .modal-body > * {
+    max-width: 100%;
+  }
+
+  .detail-hero,
+  .detail-hero > * {
+    min-width: 0;
+  }
+
+  .detail-title,
+  .detail-author,
+  .detail-desc p,
+  .detail-file span {
+    overflow-wrap: anywhere;
+  }
+
+  .detail-file {
+    flex-wrap: wrap;
+  }
+
   /* ---------- 统计页：只留日历，书目移到「点某一天」的二级页 ---------- */
   .history-card {
     display: none;
@@ -2776,12 +2807,15 @@
     appearance: none;
   }
 
-  /* ---------- 统计页：日历格子正方形，数字下面加「书本色横杠」 ---------- */
+  /* ---------- 统计页：日历格子正方形（且小一点），数字下面加「书本色横杠」 ---------- */
   .cal-cell {
     aspect-ratio: 1 / 1;
     /* 必须给 0：网格项默认 min-width:auto，会和 aspect-ratio 互相顶，
        把轨道越撑越宽，日历整片飞出屏幕（踩过） */
     min-width: 0;
+    /* 限个最大边长，格子小一点、留白多一点 */
+    max-width: 46px;
+    margin: 0 auto;
     overflow: hidden;
   }
 
