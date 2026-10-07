@@ -1,7 +1,6 @@
 import { AUTH_URL as baiduAuthUrl, accessToken as baiduToken, diagnose as baiduOpenDiagnose, readFile as baiduOpenReadFile, readJson as baiduOpenReadJson } from '../data/baidu-open'
 import { unzipSync } from 'fflate'
 import {
-  readSession
 } from '../data/baidu'
 import { deleteBook, getBook, type StoredBook } from '../data/db'
 import { readChapterFromZip } from '../data/epub'
@@ -367,8 +366,7 @@ async function downloadBaiduBooks(): Promise<SyncState> {
   writeSyncState({ phase: 'running', message: '正在读取云端清单…' })
   const settings = readSettings()
   const remote = '/' + String(settings.sync.remoteDir || 'DshReader').replace(/^\/+|\/+$/g, '')
-  const session = readSession()
-  if (!session) return writeSyncState({ phase: 'idle', message: '请先点「连接」登录百度网盘' })
+  // 旧网页会话（bdstoken）与开放平台无关 ✗ 重装后它必然为空，不能拿它当门槛 ✓
   // 走开放平台（access_token）：网页会话下载需要网页签名 sign，是死路 ✗
   if (!(await baiduToken())) {
     const report = await baiduOpenDiagnose().catch(() => 'n/a')
@@ -421,7 +419,7 @@ async function downloadBaiduBooks(): Promise<SyncState> {
         ? `已下载 ${done} 本，失败 ${failed.length} 本：${failed.slice(0, 3).join('、')}`
         : `已下载 ${done} 本`,
     loggedIn: true,
-    account: `百度网盘 · ${session.uk}`,
+    account: '百度网盘（已授权）',
     lastSyncAt: Date.now(),
     transferred: done,
     total: keys.length
@@ -731,7 +729,7 @@ export function createLocalApi(): unknown {
         memorySessions.length = 0
         settingsCache = null
         cache = null
-      },
+      }
     },
 
     reader: {
