@@ -918,8 +918,8 @@ export function ReaderPage() {
                     : (readerSettings?.pageWidth ?? 720)
                 }
                 min={240}
-                max={920}
-                step={20}
+                max={460}
+                step={10}
                 onChange={(v) =>
                   void saveSettings({
                     reader: {

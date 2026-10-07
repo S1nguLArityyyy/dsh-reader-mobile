@@ -130,7 +130,7 @@ try {
 
     // 量宽度/高度：谁比容器大，谁就是溢出的元凶；min-height 常把 height 顶掉，所以两个都打
     const geometry = await cdp.eval(
-      `JSON.stringify(['.app','.mobile-nav','.mobile-nav-item','.mobile-nav-item svg','.mobile-nav-dot','.modal','.modal-body','.detail-hero','.detail-tags','.detail-facts','.cal-cell','.day-panel'].map((sel) => { const el = document.querySelector(sel); if (!el) return sel + ' 无'; const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return sel + ' x=' + Math.round(r.x) + ' y=' + Math.round(r.y) + ' w=' + Math.round(r.width) + ' h=' + Math.round(r.height) + ' cy=' + Math.round(r.y + r.height / 2) + ' scrollW=' + el.scrollWidth + ' minH=' + cs.minHeight }))`
+      `JSON.stringify(['.reader','.reader-page','.reader-body','.app','.mobile-nav','.mobile-nav-item','.mobile-nav-item svg','.mobile-nav-dot','.modal','.modal-body','.detail-hero','.detail-tags','.detail-facts','.cal-cell','.day-panel'].map((sel) => { const el = document.querySelector(sel); if (!el) return sel + ' 无'; const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); const root = document.querySelector('.reader'); const rs = root ? getComputedStyle(root) : null; return sel + ' w=' + Math.round(r.width) + ' pad=' + cs.paddingLeft + '/' + cs.paddingRight + ' mw=' + cs.maxWidth + ' size=' + (rs ? rs.getPropertyValue('--reader-size').trim() : '-') + ' padvar=' + (rs ? rs.getPropertyValue('--reader-padding').trim() : '-') + ' widthvar=' + (rs ? rs.getPropertyValue('--reader-width').trim() : '-') }))`
     )
     console.log(`[探针] 宽度：${geometry}`)
     const viewport = await cdp.eval('innerWidth')

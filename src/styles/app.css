@@ -3601,6 +3601,14 @@
     padding-right: 0;
   }
 
+  /* 滚动模式下左右留白由 .reader-page 提供（--reader-padding），
+     body 的 28px 基础内边距必须清掉 —— 实测 body(28) + page(20) 叠加成每边 48px，
+     这正是用户反馈"两边很宽"的真因 */
+  .reader-body:not(.paged) {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
   /* ---------- 书籍详情面板 ---------- */
   /*
    * 进度那一行横排会把「继续阅读」按钮挤出屏幕外 —— 按钮点不着、进不了阅读（踩过），
