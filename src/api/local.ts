@@ -18,7 +18,7 @@ import {
   writeSyncState,
   type SyncPayload
 } from '../data/sync'
-import { coverUrlOf, importEpubBytes, importEpubFile, pickEpubFiles } from '../data/import'
+import { backfillCoverColors, coverUrlOf, importEpubBytes, importEpubFile, pickEpubFiles } from '../data/import'
 import { listBooks } from '../data/db'
 import type {
   Book,
@@ -364,6 +364,8 @@ async function downloadCloudBooks(): Promise<SyncState> {
 /** 「全部下载云端书籍」（百度网盘版）：manifest.json 取清单 → 逐本下载 → 解析入库 */
 /** 局域网直传：从电脑端（同一 WiFi）拉取整库（比网盘快几个数量级 ✓） */
 async function downloadLanBooks(): Promise<SyncState> {
+  // 顺手给旧书补算封面主色（旧版本记录里没有该字段 ✗ 详情页会显示错误的哈希色 ✓）
+  void backfillCoverColors().catch(() => undefined)
   writeSyncState({ phase: 'running', message: '正在读取电脑书库…' })
   const base = String(readSettings().sync.localCloudDir ?? '')
   const listed = await listLanBooks(base)
@@ -408,6 +410,8 @@ async function downloadLanBooks(): Promise<SyncState> {
   })
 }
 async function downloadBaiduBooks(): Promise<SyncState> {
+  // 顺手给旧书补算封面主色（旧版本记录里没有该字段 ✗ 详情页会显示错误的哈希色 ✓）
+  void backfillCoverColors().catch(() => undefined)
   // 置 running：面板才会显示已用时秒表、才会禁用「立即同步」（否则看起来像没反应）
   writeSyncState({ phase: 'running', message: '正在读取云端清单…' })
   const settings = readSettings()
@@ -664,7 +668,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '1.8.1',
+        version: '1.8.2',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',

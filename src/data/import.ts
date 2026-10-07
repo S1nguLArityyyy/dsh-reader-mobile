@@ -1,7 +1,7 @@
 import { dominantColor } from '../lib/cover-color'
 import { unzipSync } from 'fflate'
 import { readEpubMetaFromBytes } from './epub'
-import { putBook, sha1Hex, type StoredBook } from './db'
+import { listBooks, putBook, sha1Hex, type StoredBook } from './db'
 
 /**
  * 导入一个本地 EPUB 文件。
@@ -141,4 +141,24 @@ async function coverColorOf(data: unknown, ext: string | null | undefined): Prom
   } catch {
     return null
   }
+}
+
+/**
+ * 给【还没有主色】的书补算封面主色（旧版本导入的书 ✗ 记录里没有该字段 ✓）。
+ * 每本算完立即写回 IndexedDB ✓ 所以中断也不会白算 ✓。
+ * 返回补算的本数。
+ */
+export async function backfillCoverColors(): Promise<number> {
+  const books = await listBooks()
+  let fixed = 0
+  for (const book of books) {
+    if (book.coverColor || !book.cover) continue
+    const url = URL.createObjectURL(book.cover)
+    const color = await dominantColor(url)
+    URL.revokeObjectURL(url)
+    if (!color) continue
+    await putBook({ ...book, coverColor: color })
+    fixed += 1
+  }
+  return fixed
 }
