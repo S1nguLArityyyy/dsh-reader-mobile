@@ -30,6 +30,12 @@ export function ReaderPage() {
   /* ---------- 一级界面底部状态条：电量 · 页数/总章 · 百分比 · 时间 ---------- */
   const [clock, setClock] = useState('')
   const [battery, setBattery] = useState<number | null>(null)
+  /* 全文搜索状态 */
+  const [searchText, setSearchText] = useState('')
+  const [searchHits, setSearchHits] = useState<
+    Array<{ chapterIndex: number; label: string; snippet: string }>
+  >([])
+  const [searching, setSearching] = useState(false)
   useEffect(() => {
     const tick = (): void => {
       const now = new Date()
@@ -552,6 +558,29 @@ export function ReaderPage() {
   )
 
 
+  /** 执行全书搜索（接口没在公共类型里，这里局部断言） */
+  const runSearch = async (): Promise<void> => {
+    const query = searchText.trim()
+    if (!query) {
+      setSearchHits([])
+      return
+    }
+    setSearching(true)
+    try {
+      const api = window.api.reader as unknown as {
+        search: (
+          id: string,
+          text: string
+        ) => Promise<Array<{ chapterIndex: number; label: string; snippet: string }>>
+      }
+      setSearchHits(await api.search(bookId ?? '', query))
+    } catch {
+      setSearchHits([])
+    } finally {
+      setSearching(false)
+    }
+  }
+
   // 章节名优先用**书本目录里的名字**（如"～第一败～ 专业青梅竹马 八奈见杏菜的惨烈败相"），
   // 目录里没有对应条目时才退回接口给的"第 N 章"
   let runLabel = reader.chapterLabel
@@ -800,9 +829,52 @@ export function ReaderPage() {
             </button>
           </div>
           <div className="reader-panel-body">
-            <div className="setting-hint" style={{ padding: 12 }}>
-              全文搜索还没做（要先给全书建索引），下一轮补上。
+            <div className="tool-seek" style={{ marginBottom: 10, padding: '4px 12px' }}>
+              <input
+                className="search-input"
+                value={searchText}
+                placeholder="搜索本书内容…"
+                onChange={(e) => setSearchText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void runSearch()
+                }}
+                style={{
+                  width: '100%',
+                  height: 38,
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  color: 'inherit',
+                  fontFamily: 'inherit',
+                  fontSize: 14
+                }}
+              />
             </div>
+            <button
+              className="tool-bubble"
+              style={{ width: '100%', marginBottom: 12 }}
+              onClick={() => void runSearch()}
+            >
+              <Search size={16} /> 搜索
+            </button>
+            {searching ? <div className="setting-hint" style={{ padding: 8 }}>搜索中…</div> : null}
+            {!searching && searchText.trim() && searchHits.length === 0 ? (
+              <div className="setting-hint" style={{ padding: 8 }}>没有找到包含该词的内容</div>
+            ) : null}
+            {searchHits.map((hit) => (
+              <button
+                key={hit.chapterIndex}
+                className="toc-item"
+                style={{ display: 'block', width: '100%', textAlign: 'left', lineHeight: 1.5 }}
+                onClick={() => {
+                  void goToChapter(hit.chapterIndex)
+                  setPanel('none')
+                }}
+              >
+                <span style={{ fontWeight: 600 }}>{hit.label}</span>
+                <span style={{ opacity: 0.7 }}> · {hit.snippet}</span>
+              </button>
+            ))}
           </div>
         </div>
       ) : null}

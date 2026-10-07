@@ -438,13 +438,42 @@ async function importFiles(): Promise<{ books: string[]; errors: string[] }> {
   }
   return { books, errors }
 }
+/** 全书搜索：在导入的书里逐章找关键词，返回章节 + 命中片段 */
+async function searchImported(
+  book: StoredBook,
+  query: string
+): Promise<Array<{ chapterIndex: number; label: string; snippet: string }>> {
+  const q = query.trim().toLowerCase()
+  if (!q) return []
+  const files = await zipOf(book)
+  const out: Array<{ chapterIndex: number; label: string; snippet: string }> = []
+  for (let i = 0; i < book.chapterHrefs.length; i += 1) {
+    const key = book.opfDir ? book.opfDir + '/' + book.chapterHrefs[i] : book.chapterHrefs[i]
+    const bytes = files.get(key) ?? files.get(decodeURIComponent(key))
+    if (!bytes) continue
+    const text = new TextDecoder()
+      .decode(bytes)
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+    const at = text.toLowerCase().indexOf(q)
+    if (at < 0) continue
+    out.push({
+      chapterIndex: i,
+      label: chapterLabelOf(book, i),
+      snippet: (at > 24 ? '…' : '') + text.slice(Math.max(0, at - 24), at + q.length + 40) + '…'
+    })
+    if (out.length >= 40) break
+  }
+  return out
+}
 export function createLocalApi(): unknown {
   const listeners = new Set<() => void>()
 
   return {
     app: {
       info: async () => ({
-        version: '1.0.0',
+        version: '1.0.1',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -610,7 +639,12 @@ export function createLocalApi(): unknown {
           html: chapter.html
         }
       },
-      setProgress: async (bookId: string, patch: Partial<Progress>) => {
+      // 全文搜索（当前这本书）：手机端没有索引，直接逐章扫，书不大够用
+      search: async (bookId: string, query: string) => {
+        const imported = await loadImported(bookId)
+        if (!imported) return []
+        return searchImported(imported, query)
+      },      setProgress: async (bookId: string, patch: Partial<Progress>) => {
         const all = readProgress()
         const current = all[bookId]
         const next: Progress = {
