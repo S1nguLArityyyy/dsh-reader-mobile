@@ -61,7 +61,7 @@ export function Modal({
     >
       <div
         className={`modal ${variant}${closing ? ' closing' : ''}`}
-        style={{ width }}
+        style={{ width: `min(100vw, ${width}px)` }}
         role="dialog"
         aria-modal="true"
       >
