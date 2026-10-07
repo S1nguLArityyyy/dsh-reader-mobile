@@ -3230,9 +3230,77 @@
     text-align: right;
   }
 
-  /* 二级 / 三级菜单：从下方飞入 */
+  /* 二级 / 三级菜单：从下方飞入，且**只有气泡**（没有面板底、没有标题栏） */
   .reader-panel {
     animation: reader-panel-in 0.26s cubic-bezier(0.22, 0.9, 0.3, 1) both;
+  }
+
+  /* 二级面板：整块透明，让按键自己成为悬浮气泡（按用户要求"出来的只有气泡"） */
+  .reader-tools {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  /* 去掉「阅读工具」标题与右上角的小 ✕ */
+  .reader-tools .reader-panel-head {
+    display: none;
+  }
+
+  /* 气泡按钮：半透明白 + 毛玻璃 + 圆角，和主页风格一致 */
+  .tool-bubble {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 52px;
+    padding: 0 12px;
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-radius: 16px;
+    background: var(--panel);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .tool-bubble:active {
+    transform: scale(0.96);
+    background: var(--hover);
+  }
+
+  /* 第一行：搜索占三分之二，取消 / 退出各占六分之一（纯图标） */
+  .tool-row-top {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .tool-bubble-wide {
+    grid-column: span 4;
+  }
+
+  /* 跳转返回：挪到阅读页左上角，只有拖动过进度条才出现 */
+  .reader-back-bubble {
+    position: absolute;
+    top: calc(12px + max(env(safe-area-inset-top, 0px), 26px));
+    left: 12px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 999px;
+    background: var(--panel);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    box-shadow: 0 6px 18px rgba(16, 24, 40, 0.16);
+    animation: reader-panel-in 0.22s ease-out both;
   }
 
   @keyframes reader-panel-in {
