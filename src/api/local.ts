@@ -58,14 +58,25 @@ const PROGRESS_KEY = 'dsh.progress'
 const SESSIONS_KEY = 'dsh.sessions'
 const SETTINGS_KEY = 'dsh.settings'
 
+/** 空书库：APK 里已经不再打包示例书，首次安装时用它兜底（列表只显示用户导入的书） */
+const EMPTY_LIBRARY: ExportedLibrary = {
+  exportedAt: '',
+  book: { id: '', title: '', author: '', description: '', chapterCount: 0, wordCount: 0 },
+  chapters: []
+}
 let cache: ExportedLibrary | null = null
 
 async function loadLibrary(): Promise<ExportedLibrary> {
   if (!cache) {
-    const response = await fetch('data/library.json')
-    if (!response.ok) throw new Error(`读取书籍数据失败：HTTP ${response.status}`)
-    cache = (await response.json()) as ExportedLibrary
-    seedDemoReading(cache.book.id)
+    try {
+      const response = await fetch('data/library.json')
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      cache = (await response.json()) as ExportedLibrary
+      if (cache.book.id) seedDemoReading(cache.book.id)
+    } catch {
+      // 没有内置示例书（现在的默认情况）：返回空书库，不抛异常
+      cache = EMPTY_LIBRARY
+    }
   }
   return cache
 }
@@ -433,7 +444,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '0.9.17',
+        version: '0.9.18',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
