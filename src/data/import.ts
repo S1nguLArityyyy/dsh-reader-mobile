@@ -14,20 +14,20 @@ export interface ImportResult {
   error: string | null
 }
 
-/** 让用户选文件（返回 null 表示用户取消） */
-export function pickEpubFile(): Promise<File | null> {
+/** 让用户选文件（支持多选批量导入；返回空数组表示取消） */
+export function pickEpubFiles(): Promise<File[]> {
   return new Promise((resolve) => {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = '.epub,application/epub+zip'
+    input.multiple = true
     input.style.display = 'none'
     document.body.appendChild(input)
     input.onchange = () => {
-      const file = input.files?.[0] ?? null
+      const files = [...(input.files ?? [])]
       input.remove()
-      resolve(file)
+      resolve(files)
     }
-    // 部分机型取消选择不会触发 change，靠 focus 兜底（简单起见只在 change 里清理）
     input.click()
   })
 }

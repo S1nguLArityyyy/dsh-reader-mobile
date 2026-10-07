@@ -1,7 +1,7 @@
 import { unzipSync } from 'fflate'
 import { getBook, type StoredBook } from '../data/db'
 import { readChapterFromZip } from '../data/epub'
-import { coverUrlOf, importEpubFile, pickEpubFile } from '../data/import'
+import { coverUrlOf, importEpubFile, pickEpubFiles } from '../data/import'
 import { listBooks } from '../data/db'
 import type {
   Book,
@@ -396,13 +396,26 @@ function chapterLabelOf(book: StoredBook, index: number): string {
   const hit = flatTocOf(book).find((entry) => entry.chapterIndex === index)
   return hit ? hit.label : '第 ' + (index + 1) + ' 章'
 }
+/** 批量导入：多选文件 → 逐个解析入库；返回成功的 id 与失败信息 */
+async function importFiles(): Promise<{ books: string[]; errors: string[] }> {
+  const files = await pickEpubFiles()
+  if (files.length === 0) return { books: [], errors: [] }
+  const books: string[] = []
+  const errors: string[] = []
+  for (const file of files) {
+    const result = await importEpubFile(file)
+    if (result.book) books.push(result.book.id)
+    else errors.push(`${file.name}：${result.error ?? '导入失败'}`)
+  }
+  return { books, errors }
+}
 export function createLocalApi(): unknown {
   const listeners = new Set<() => void>()
 
   return {
     app: {
       info: async () => ({
-        version: '0.9.12',
+        version: '0.9.13',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -463,15 +476,8 @@ export function createLocalApi(): unknown {
         }
         return [...stored, builtIn]
       },
-      importDialog: async () => {
-        // 手机端不需要插件：隐藏 input 直接调起安卓文件选择器
-        const file = await pickEpubFile()
-        if (!file) return { books: [], errors: [] }
-        const result = await importEpubFile(file)
-        if (result.error || !result.book) return { books: [], errors: [result.error ?? '导入失败'] }
-        return { books: [result.book.id], errors: [] }
-      },
-      importFolderDialog: async () => ({ books: [], errors: [] }),
+      importDialog: () => importFiles(),
+      importFolderDialog: () => importFiles(),
       importPaths: async () => ({ books: [], errors: [] }),
       remove: async () => undefined,
       update: async () => undefined,
