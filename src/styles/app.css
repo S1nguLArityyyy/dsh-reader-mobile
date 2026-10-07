@@ -2758,6 +2758,17 @@
     min-width: 0;
   }
 
+  /* 标签行必须能换行：不换行的 flex 行会把顶部那块顶宽，
+     整张详情页跟着往右溢出（「4 章 · 3.5 万字」被切就是这个） */
+  .detail-tags {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .detail-tags > * {
+    max-width: 100%;
+  }
+
   .detail-title,
   .detail-author,
   .detail-desc p,
