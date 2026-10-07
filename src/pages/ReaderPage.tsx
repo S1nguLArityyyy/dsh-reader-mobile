@@ -61,11 +61,8 @@ export function ReaderPage() {
   const readerSettings = settings?.reader
   const theme = READER_THEMES[readerSettings?.theme ?? 'paper']
   const mode = readerSettings?.mode ?? 'scroll'
-  // 页边距：翻页模式可用自己那套（用户要求两种模式分开设置）
-  const padding =
-    mode === 'paged'
-      ? (readerSettings?.pagedPadding ?? readerSettings?.padding ?? 36)
-      : (readerSettings?.padding ?? 36)
+  // 页边距：两种模式共用（翻页模式的独立页边距已移除）
+  const padding = readerSettings?.padding ?? 36
   const { bookId, chapters, chapterIndex, html, loading, book } = reader
 
   /* ---------- 分栏计算：按窗口宽度决定单栏还是双栏 ---------- */
@@ -77,13 +74,11 @@ export function ReaderPage() {
   )
   const columns = mode === 'paged' && available >= MIN_COLUMN * 2 + COLUMN_GAP ? 2 : 1
   const columnWidth = useMemo(() => {
-    // 单栏：版心宽度 = min(设置值, 可用宽)，只保留一个很小的安全下限。
-    // 原来写成 Math.max(MIN_COLUMN, available) 有两处致命影响：
-    //   ① 页边距只影响 available，被这个 max 直接吃掉 → 翻页模式页边距无效
-    //   ② min(pageWidth, MIN_COLUMN) 等于 MIN_COLUMN → pageWidth ≥ MIN_COLUMN 时版心宽度无效
-    if (columns === 1) return Math.max(160, Math.min(readerSettings?.pageWidth ?? 720, available))
+    // 单栏：**翻页模式不再使用版心宽度**（用户要求移除该项），只按可用宽铺满；
+    // 滚动模式的版心宽度由 .reader-page 的 max-width 控制，不受这里影响。
+    if (columns === 1) return Math.max(160, available)
     return Math.floor((available - COLUMN_GAP) / 2)
-  }, [columns, available, readerSettings?.pageWidth])
+  }, [columns, available])
   const screenWidth = columns * columnWidth + (columns - 1) * COLUMN_GAP
   const step = screenWidth + COLUMN_GAP
 
@@ -467,9 +462,9 @@ export function ReaderPage() {
         '--reader-bg': theme.bg,
         '--reader-text': theme.text,
         '--reader-quote': theme.quote,
-        // 滚动 / 翻页 各留一套排版参数：翻页模式优先用自己的值，没有则回落到通用值
-        '--reader-width': `${mode === 'paged' ? (readerSettings?.pagedPageWidth ?? readerSettings?.pageWidth ?? 720) : (readerSettings?.pageWidth ?? 720)}px`,
-        '--reader-padding': `${mode === 'paged' ? (readerSettings?.pagedPadding ?? padding) : padding}px`,
+        // 版心宽度 / 页边距：两种模式共用（翻页模式的这两项设置已按用户要求移除）
+        '--reader-width': `${readerSettings?.pageWidth ?? 720}px`,
+        '--reader-padding': `${padding}px`,
         '--reader-size': `${mode === 'paged' ? (readerSettings?.pagedFontSize ?? readerSettings?.fontSize ?? 18) : (readerSettings?.fontSize ?? 18)}px`,
         '--reader-lh': String(
           mode === 'paged'
@@ -905,7 +900,7 @@ export function ReaderPage() {
                 }
               />
             </div>
-            <div className="panel-row">
+            <div className="panel-row" style={{ display: mode === 'paged' ? 'none' : undefined }}>
               <div className="panel-row-title">
                 <span>版心宽度</span>
                 <span className="range-value">
@@ -934,7 +929,7 @@ export function ReaderPage() {
                 }
               />
             </div>
-            <div className="panel-row">
+            <div className="panel-row" style={{ display: mode === 'paged' ? 'none' : undefined }}>
               <div className="panel-row-title">
                 <span>页边距</span>
                 <span className="range-value">{padding} px</span>

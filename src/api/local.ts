@@ -231,7 +231,7 @@ function defaultSettings(): Settings {
       lineHeight: 1.9,
       pageWidth: 720,
       // 页边距：手机屏窄，默认 20px（桌面端的 36px 在手机上两侧会显得很宽）
-      padding: 20,
+      padding: 28,
       fontFamily: 'system',
       mode: 'scroll',
       // 这个字段漏过：设置页要按 theme 查阅读主题色，查不到就 undefined.bg 崩掉（整页卡死）
@@ -268,7 +268,14 @@ function readSettings(): Settings {
   if (settingsCache) return settingsCache
   try {
     const raw = localStorage.getItem(SETTINGS_KEY)
-    settingsCache = raw ? { ...defaultSettings(), ...(JSON.parse(raw) as Settings) } : defaultSettings()
+    if (raw) {
+      const parsed = JSON.parse(raw) as Settings
+      // 迁移：旧版默认页边距 20px 偏窄 → 一次性提到 28px（只改恰好等于旧默认值的）
+      if (parsed.reader && parsed.reader.padding === 20) parsed.reader.padding = 28
+      settingsCache = { ...defaultSettings(), ...parsed }
+    } else {
+      settingsCache = defaultSettings()
+    }
   } catch {
     settingsCache = defaultSettings()
   }
@@ -292,7 +299,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '0.9.6',
+        version: '0.9.7',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
