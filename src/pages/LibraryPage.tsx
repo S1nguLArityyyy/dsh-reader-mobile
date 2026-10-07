@@ -124,14 +124,48 @@ export function LibraryPage() {
     if (ok) await removeBook(book.id, deleteFile)
   }
 
+  // ---- 长按书籍 → 打开二级菜单（手机没有悬停 ✗ 所以「⋯」按钮改为长按触发 ✓）----
+  const longPress = { timer: 0 as number, fired: false }
+
+  const cancelLongPress = (): void => {
+    if (longPress.timer) {
+      window.clearTimeout(longPress.timer)
+      longPress.timer = 0
+    }
+  }
+
+  const startLongPress = (target: HTMLElement): void => {
+    if (selectMode) return
+    cancelLongPress()
+    longPress.fired = false
+    longPress.timer = window.setTimeout(() => {
+      longPress.timer = 0
+      longPress.fired = true
+      navigator.vibrate?.(10)
+      // 程序方式点开 Dropdown 的触发器 ✓（不依赖它的内部实现 ✓ 最稳 ✓）
+      const trigger = target.querySelector('.book-menu-btn') as HTMLElement | null
+      trigger?.click()
+    }, 480)
+  }
   const renderBook = (book: Book): React.ReactNode => {
     const bookPct = percentMap.get(book.id) ?? 0
     const isSelected = selected.includes(book.id)
     return (
-      <div className={`book-item${isSelected ? ' selected' : ''}`} key={book.id}>
+      <div
+        className={isSelected ? "book-item selected" : "book-item"}
+        key={book.id}
+        onTouchStart={(event) => startLongPress(event.currentTarget)}
+        onTouchEnd={cancelLongPress}
+        onTouchMove={cancelLongPress}
+        onContextMenu={(event) => event.preventDefault()}
+      >
         <div
           className="book-cover"
-          onClick={() => (selectMode ? toggleSelected(book.id) : openDetail(book.id))}
+          onClick={() => {
+            if (longPress.fired) { longPress.fired = false; return }
+            if (selectMode) toggleSelected(book.id)
+            else openDetail(book.id)
+          }}
         >
           <BookCover book={book} />
           {book.volume ? <span className="book-badge">{book.volume}</span> : null}
@@ -154,7 +188,7 @@ export function LibraryPage() {
         </div>
 
         {!selectMode ? (
-          <div style={{ position: 'absolute', top: 5, left: 5 }}>
+          <div style={{ position: 'absolute', top: 5, left: 5, opacity: 0, pointerEvents: 'none' }}>
             <Dropdown
               align="left"
               trigger={
