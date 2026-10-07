@@ -1,3 +1,5 @@
+import { coverUrlOf, importEpubFile, pickEpubFile } from '../data/import'
+import { listBooks } from '../data/db'
 import type {
   Book,
   BookOpenPayload,
@@ -299,7 +301,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '0.9.10',
+        version: '0.9.11',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -331,8 +333,43 @@ export function createLocalApi(): unknown {
     },
 
     library: {
-      list: async () => [toBook(await loadLibrary())],
-      importDialog: async () => ({ books: [], errors: [] }),
+      list: async () => {
+        // 本机导入的书（IndexedDB）在前，内置示例书在后
+        const builtIn = toBook(await loadLibrary())
+        const stored: Book[] = []
+        try {
+          for (const item of await listBooks()) {
+            stored.push({
+              ...builtIn,
+              id: item.id,
+              title: item.title,
+              metaTitle: item.title,
+              author: item.author,
+              description: item.description,
+              fileName: item.fileName,
+              fileSize: item.fileSize,
+              coverFile: coverUrlOf(item),
+              coverColor: null,
+              chapterCount: item.chapterHrefs.length,
+              chapterChars: [],
+              wordCount: item.wordCount,
+              addedAt: item.addedAt,
+              seriesKey: null
+            })
+          }
+        } catch {
+          /* IndexedDB 不可用就只显示内置书 */
+        }
+        return [...stored, builtIn]
+      },
+      importDialog: async () => {
+        // 手机端不需要插件：隐藏 input 直接调起安卓文件选择器
+        const file = await pickEpubFile()
+        if (!file) return { books: [], errors: [] }
+        const result = await importEpubFile(file)
+        if (result.error || !result.book) return { books: [], errors: [result.error ?? '导入失败'] }
+        return { books: [result.book.id], errors: [] }
+      },
       importFolderDialog: async () => ({ books: [], errors: [] }),
       importPaths: async () => ({ books: [], errors: [] }),
       remove: async () => undefined,
