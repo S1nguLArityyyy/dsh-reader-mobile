@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { ProbePage } from './probe/ProbePage'
 import { createLocalApi } from './api/local'
 import { installAndroidBack } from './lib/android-back'
@@ -37,4 +38,4 @@ function Shell() {
 // 安卓返回键：弹窗 → 阅读器 → 应用，逐层退（不装插件，走 history）
 installAndroidBack()
 
-createRoot(container).render(<Shell />)
+createRoot(container).render(<ErrorBoundary><Shell /></ErrorBoundary>)
