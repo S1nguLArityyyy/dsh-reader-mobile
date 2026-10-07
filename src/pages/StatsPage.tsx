@@ -152,7 +152,7 @@ export function StatsPage() {
   const readingDays = rangeDays.filter((day) => day.seconds > 0).length
   const perReadingDay = readingDays > 0 ? rangeSeconds / readingDays : 0
   // 临时：把版本写进页面，方便确认手机上装的是哪一版（确认后删除）
-  const appVersion = '0.5.8'
+  const appVersion = '0.5.9'
 
   /* 选中的那天：默认落在最近有阅读记录的一天，进来就能看到内容 */
   const latestReadingDay = [...days]
@@ -325,15 +325,50 @@ export function StatsPage() {
               const percent = percentText(item.percent)
               const status = item.percent >= 0.99 ? '已读完' : item.percent > 0.001 ? '阅读中' : '未开始'
               return (
-                <div className="history-row" key={item.bookId}>
+                <div
+                  className="history-row"
+                  key={item.bookId}
+                  /* 关键样式走行内：安卓上出现过"数据有、卡片却不渲染"（疑似被某条 CSS 规则吃掉），
+                     行内样式优先级最高，能把这类问题排除掉 */
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: 12,
+                    marginBottom: 12,
+                    minHeight: 110,
+                    borderRadius: 16,
+                    border: '1px solid #d3e1f8',
+                    background: 'linear-gradient(160deg, #e3edfd 0%, #eef4fe 100%)',
+                    boxSizing: 'border-box',
+                    width: '100%'
+                  }}
+                >
                   <span className="history-index">{index + 1}.</span>
-                  <div className="history-cover">
+                  <div
+                    className="history-cover"
+                    style={{
+                      flex: '0 0 auto',
+                      width: 86,
+                      height: 116,
+                      borderRadius: 10,
+                      overflow: 'hidden',
+                      lineHeight: 0
+                    }}
+                  >
                     <BookCover book={item.book} />
                   </div>
-                  <div className="history-main">
-                    <div className="history-title">{item.book.title}</div>
-                    <div className="history-author">{item.book.author}</div>
-                    <div className="history-meta">
+                  <div className="history-main" style={{ flex: 1, minWidth: 0 }}>
+                    <div className="history-title" style={{ fontSize: 16.5, fontWeight: 700, color: '#16335f' }}>
+                      {item.book.title}
+                    </div>
+                    <div className="history-author" style={{ marginTop: 2, fontSize: 12.5, color: '#5b6f8c' }}>
+                      {item.book.author}
+                    </div>
+                    <div
+                      className="history-meta"
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}
+                    >
                       <span>
                         <Clock size={12} />
                         {durationText(item.seconds)}
@@ -345,8 +380,8 @@ export function StatsPage() {
                       <span className={`chip${status === '阅读中' ? '' : ' muted'}`}>{status}</span>
                     </div>
                   </div>
-                  <ProgressRing percent={item.percent} size={44} stroke={4}>
-                    <span style={{ fontSize: 10.5, fontWeight: 600 }}>{percent}%</span>
+                  <ProgressRing percent={item.percent} size={68} stroke={6}>
+                    <span style={{ fontSize: 12, fontWeight: 600 }}>{percent}%</span>
                   </ProgressRing>
                 </div>
               )
