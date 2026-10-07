@@ -3318,14 +3318,16 @@
     margin-bottom: 12px;
   }
 
-  /* 这里必须 !important：旧规则里 .reader-progress 是 inline-flex + 固定宽，
-     不压掉的话轨道既不会占满整行、还会和箭头行并排（用户截图反馈"挤在一行"） */
+  /* 这里必须 !important：旧规则里 .reader-progress 是 inline-flex + 固定宽 + 内边距，
+     不压掉的话轨道不会占满整行、还会和箭头行并排，而且内边距会让蓝色条比灰轨道缩进一截
+     （用户反馈"进度条和拖的条在 UI 上没对上"就是这个） */
   .tool-seek .reader-progress {
     display: block !important;
     width: 100% !important;
     flex: 0 0 auto !important;
     height: 26px !important;
     margin: 0 !important;
+    padding: 0 !important;
     border-radius: 999px !important;
     overflow: hidden !important;
     background: rgba(122, 142, 172, 0.22) !important;
@@ -3335,11 +3337,17 @@
     display: none !important;
   }
 
+  /* 填充条：从轨道**左端 0 开始**、与轨道同高同圆角 —— 旧规则给的定位偏移与阴影全部清掉 */
   .tool-seek .reader-progress i {
-    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    margin: 0 !important;
     height: 100% !important;
+    min-width: 0 !important;
     border-radius: 999px !important;
     background: var(--primary, #3b6fd4) !important;
+    box-shadow: none !important;
   }
 
   .reader-progress-knob {
