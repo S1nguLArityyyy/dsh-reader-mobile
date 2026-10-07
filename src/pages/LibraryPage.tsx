@@ -134,6 +134,31 @@ export function LibraryPage() {
     }
   }
 
+  /**
+   * 用【一整套事件】打开「⋯」下拉 ✓
+   * 有些下拉组件监听的是 mousedown / pointerdown ✗ 只发 click 打不开 ✗
+   */
+  const dispatchOpenSequence = (root: HTMLElement): void => {
+    const trigger = root.querySelector('.book-menu-btn') as HTMLElement | null
+    if (!trigger) return
+    const rect = trigger.getBoundingClientRect()
+    const base = {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      clientX: rect.left + rect.width / 2,
+      clientY: rect.top + rect.height / 2,
+      button: 0,
+      buttons: 1
+    }
+    for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
+      try {
+        trigger.dispatchEvent(new PointerEvent(type, { ...base, pointerId: 1, pointerType: 'touch', isPrimary: true }))
+      } catch {
+        trigger.dispatchEvent(new MouseEvent(type, base))
+      }
+    }
+  }
   const startLongPress = (target: HTMLElement): void => {
     if (selectMode) return
     cancelLongPress()
@@ -143,8 +168,7 @@ export function LibraryPage() {
       longPress.fired = true
       navigator.vibrate?.(10)
       // 程序方式点开 Dropdown 的触发器 ✓（不依赖它的内部实现 ✓ 最稳 ✓）
-      const trigger = target.querySelector('.book-menu-btn') as HTMLElement | null
-      trigger?.click()
+      dispatchOpenSequence(target)
     }, 480)
   }
   const renderBook = (book: Book): React.ReactNode => {
