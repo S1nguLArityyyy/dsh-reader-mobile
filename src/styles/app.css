@@ -3896,3 +3896,21 @@
     color: rgba(0, 0, 0, 0.6);
   }
 }
+
+/* ================= 底部弹层（归入合集 / 书籍详情等）底部留白修正 =================
+   之前弹层底部会被屏幕边缘或底部导航挡住，按钮点不到（用户反馈"归入合集的 ui 也被挡了"） */
+.modal.sheet {
+  max-height: calc(100dvh - 80px);
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal.sheet .modal-body {
+  overflow-y: auto;
+  padding-bottom: 10px;
+}
+
+.modal.sheet .modal-foot {
+  padding-bottom: 6px;
+}
