@@ -1,4 +1,5 @@
 import { unzipSync } from 'fflate'
+import { connect as baiduConnect } from '../data/baidu'
 import { deleteBook, getBook, type StoredBook } from '../data/db'
 import { readChapterFromZip } from '../data/epub'
 import {
@@ -549,7 +550,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '1.2.0',
+        version: '1.3.0',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -794,6 +795,15 @@ export function createLocalApi(): unknown {
     sync: {
       status: async () => readSyncState(),
       connect: async () => {
+        // 百度网盘（应用内登录）走另一条通道：CapacitorHttp + WebView cookie
+        if (readSettings().sync.provider === 'baidu') {
+          const result = await baiduConnect()
+          return writeSyncState({
+            loggedIn: result.ok,
+            account: result.uk ? `百度网盘 · ${result.uk}` : null,
+            message: result.message
+          })
+        }
         const config = readDavConfig()
         if (!config) return writeSyncState({ message: '请先填写 WebDAV 地址与账号' })
         const result = await davTest(config)
