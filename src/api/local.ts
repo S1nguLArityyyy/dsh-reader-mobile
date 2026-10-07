@@ -72,14 +72,11 @@ async function loadLibrary(): Promise<ExportedLibrary> {
  * 想清空：删掉应用数据，或在开发者工具里清 localStorage。
  */
 function seedDemoReading(bookId: string): void {
-  const DEMO_KEY = 'dsh.demoSeeded'
-  if (localStorage.getItem(DEMO_KEY)) return
-  localStorage.setItem(DEMO_KEY, '1')
-
   const now = Date.now()
   const today = dayKey()
   const yesterday = new Date(now - 86400000).toISOString().slice(0, 10)
 
+  // 只要书还没有进度就种一条（不依赖 localStorage 标记，内存兜底也认）
   const all = readProgress()
   if (!all[bookId]) {
     all[bookId] = {
@@ -96,7 +93,7 @@ function seedDemoReading(bookId: string): void {
   }
 
   const rows = readSessions()
-  if (rows.length === 0) {
+  if (!rows.some((row) => row.bookId === bookId)) {
     rows.push({ bookId, day: today, seconds: 117 })
     rows.push({ bookId, day: yesterday, seconds: 100 })
     writeSessions(rows)
@@ -158,32 +155,66 @@ function toToc(data: ExportedLibrary): BookOpenPayload['toc'] {
   return flat
 }
 
+/**
+ * localStorage 的**内存兜底**。
+ *
+ * 安卓 WebView 上 localStorage 可能不可用或被系统清掉（隐私模式、清理数据等），
+ * 那样统计页就会一条记录都没有（用户反馈过"全新安装也是空的"）。
+ * 所以所有读写都再镜像一份到内存：localStorage 里有就用它，没有就用内存里的。
+ */
+const memoryProgress: Record<string, Progress> = {}
+const memorySessions: Array<{ bookId: string; day: string; seconds: number }> = []
+
 function readProgress(): Record<string, Progress> {
+  let stored: Record<string, Progress> = {}
   try {
-    return JSON.parse(localStorage.getItem(PROGRESS_KEY) ?? '{}') as Record<string, Progress>
+    stored = JSON.parse(localStorage.getItem(PROGRESS_KEY) ?? '{}') as Record<string, Progress>
   } catch {
-    return {}
+    stored = {}
   }
+  return { ...memoryProgress, ...stored }
 }
 
 function writeProgress(all: Record<string, Progress>): void {
-  localStorage.setItem(PROGRESS_KEY, JSON.stringify(all))
+  for (const [id, item] of Object.entries(all)) memoryProgress[id] = item
+  try {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(all))
+  } catch {
+    /* 存不进去也无妨，内存里有一份 */
+  }
 }
 
 function readSessions(): Array<{ bookId: string; day: string; seconds: number }> {
+  let stored: Array<{ bookId: string; day: string; seconds: number }> = []
   try {
-    return JSON.parse(localStorage.getItem(SESSIONS_KEY) ?? '[]') as Array<{
+    stored = JSON.parse(localStorage.getItem(SESSIONS_KEY) ?? '[]') as Array<{
       bookId: string
       day: string
       seconds: number
     }>
   } catch {
-    return []
+    stored = []
   }
+  // 按 bookId+day 合并内存与本地存储，内存里的兜底记录不会被丢掉
+  const merged = new Map(stored.map((row) => [`${row.bookId}|${row.day}`, row]))
+  for (const row of memorySessions) {
+    const key = `${row.bookId}|${row.day}`
+    if (!merged.has(key)) merged.set(key, row)
+  }
+  return [...merged.values()]
 }
 
 function writeSessions(rows: Array<{ bookId: string; day: string; seconds: number }>): void {
-  localStorage.setItem(SESSIONS_KEY, JSON.stringify(rows))
+  for (const row of rows) {
+    const existing = memorySessions.find((item) => item.bookId === row.bookId && item.day === row.day)
+    if (existing) existing.seconds = row.seconds
+    else memorySessions.push({ ...row })
+  }
+  try {
+    localStorage.setItem(SESSIONS_KEY, JSON.stringify(rows))
+  } catch {
+    /* 内存里有 */
+  }
 }
 
 const dayKey = (): string => new Date().toISOString().slice(0, 10)
