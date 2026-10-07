@@ -21,6 +21,8 @@ export interface StoredBook {
   fileSize: number
   cover: Blob | null
   coverExt: string | null
+  /** 封面主色（导入时算好 ✓ 详情页渐变用 ✓） */
+  coverColor: string | null
   /** 原始 EPUB 字节（打开书时再解包） */
   epub: ArrayBuffer
   chapterHrefs: string[]

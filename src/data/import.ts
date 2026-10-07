@@ -1,3 +1,4 @@
+import { dominantColor } from '../lib/cover-color'
 import { unzipSync } from 'fflate'
 import { readEpubMetaFromBytes } from './epub'
 import { putBook, sha1Hex, type StoredBook } from './db'
@@ -62,6 +63,8 @@ export async function importEpubFile(file: File): Promise<ImportResult> {
       fileSize: file.size,
       cover: meta.coverData ? new Blob([meta.coverData as unknown as BlobPart]) : null,
       coverExt: meta.coverExt,
+      // 从封面图取主色（详情页渐变用）：手机端此前从未计算过 ✗ 只能回退到"按书名哈希"的伪随机色 ✗
+      coverColor: meta.coverData ? await coverColorOf(meta.coverData, meta.coverExt) : null,
       epub: buf,
       chapterHrefs: meta.chapterHrefs,
       opfPath: meta.opfPath,
@@ -110,6 +113,8 @@ export async function importEpubBytes(
       fileSize: bytes.byteLength,
       cover: meta.coverData ? new Blob([meta.coverData as unknown as BlobPart]) : null,
       coverExt: meta.coverExt,
+      // 从封面图取主色（详情页渐变用）：手机端此前从未计算过 ✗ 只能回退到"按书名哈希"的伪随机色 ✗
+      coverColor: meta.coverData ? await coverColorOf(meta.coverData, meta.coverExt) : null,
       epub: buf,
       chapterHrefs: meta.chapterHrefs,
       opfPath: meta.opfPath,
@@ -122,5 +127,18 @@ export async function importEpubBytes(
     return { book: record, error: null }
   } catch (error) {
     return { book: null, error: error instanceof Error ? error.message : String(error) }
+  }
+}
+
+/** 由封面字节算出主色（转成对象 URL → canvas 取样 → 主色 ✓ 用完立即释放 ✓） */
+async function coverColorOf(data: unknown, ext: string | null | undefined): Promise<string | null> {
+  try {
+    const blob = new Blob([data as BlobPart], { type: ext === 'png' ? 'image/png' : 'image/jpeg' })
+    const url = URL.createObjectURL(blob)
+    const color = await dominantColor(url)
+    URL.revokeObjectURL(url)
+    return color
+  } catch {
+    return null
   }
 }
