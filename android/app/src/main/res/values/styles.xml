@@ -13,6 +13,12 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- 全面屏：状态栏/手势条透明，内容延伸到系统栏下面 -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <!-- 状态栏图标用深色：应用是浅色底，原来图标默认白色，在白底上完全看不见 -->
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
 
 
