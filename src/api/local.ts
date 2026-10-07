@@ -801,7 +801,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.1.6',
+        version: '2.1.7',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -1061,6 +1061,16 @@ export function createLocalApi(): unknown {
 
     sync: {
       status: async () => readSyncState(),
+      /** 只同步阅读记录（不拉书，秒级完成）—— 主页刷新按钮用 */
+      recordsOnly: async () => {
+        const provider = readSettings().sync.provider
+        if (provider === 'lan') {
+          const result = await syncLanRecords()
+          return writeSyncState({ phase: 'idle', message: result.message, lastSyncAt: Date.now() })
+        }
+        if (provider === 'baidu') return uploadRecordsBaidu()
+        return writeSyncState({ message: '当前云端类型不支持同步阅读记录' })
+      },
       connect: async () => {
         // 百度网盘（应用内登录）走另一条通道：CapacitorHttp + WebView cookie
         if (readSettings().sync.provider === 'lan') {

@@ -288,6 +288,14 @@ export function LibraryPage() {
           {query ? '搜索结果' : activeGroup ? activeGroup.title : '本地书库'}
         </h1>
         <div className="head-actions">
+          {/* 只同步阅读记录，不下载书，秒级完成 */}
+          <button
+            className="btn btn-ghost btn-sm"
+            title="只同步阅读记录（不下载书）"
+            onClick={() => void (window.api as unknown as { sync: { recordsOnly: () => Promise<unknown> } }).sync.recordsOnly()}
+          >
+            刷新记录
+          </button>
           {seriesFilter && !query ? (
             <button className="btn btn-ghost btn-sm" onClick={() => setSeriesFilter(null)}>
               显示全部
