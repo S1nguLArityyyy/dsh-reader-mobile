@@ -190,6 +190,8 @@ export function Slider({
   step?: number
   onChange: (value: number) => void
 }) {
+  // 已填充百分比：用来画"实心胶囊"，与阅读器滚动条同一种观感
+  const percent = max > min ? ((value - min) / (max - min)) * 100 : 0
   return (
     <input
       className="slider"
@@ -198,7 +200,15 @@ export function Slider({
       max={max}
       step={step}
       value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
+      style={{
+        background: `linear-gradient(to right, var(--primary, #3b6fd4) 0%, var(--primary, #3b6fd4) ${percent}%, rgba(122, 142, 172, 0.22) ${percent}%, rgba(122, 142, 172, 0.22) 100%)`
+      }}
+      onChange={(e) => {
+        const next = Number(e.target.value)
+        // 震动反馈：值真的变了才震一下（每个 input 事件都震会变成持续嗡嗡）
+        if (next !== value) navigator.vibrate?.(8)
+        onChange(next)
+      }}
     />
   )
 }

@@ -163,22 +163,30 @@
   cursor: not-allowed;
 }
 
+/* 通用滑块：与阅读器滚动条统一样式 —— 粗胶囊轨道 + 实心填充（背景渐变由组件按值算），
+   原来的 180px 固定宽 + 圆点在手机上既不统一也太窄 */
 .slider {
   -webkit-appearance: none;
-  width: 180px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--border-2);
+  appearance: none;
+  width: 100%;
+  height: 26px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(122, 142, 172, 0.22);
 }
 
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  background: #fff;
-  border: 2px solid var(--primary);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  width: 0;
+  height: 0;
+  border: none;
+  box-shadow: none;
+}
+
+.slider::-moz-range-thumb {
+  width: 0;
+  height: 0;
+  border: none;
 }
 
 .select {
