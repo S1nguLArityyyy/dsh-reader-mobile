@@ -28,6 +28,10 @@ export function installAndroidBack(): void {
       state.closeReader()
       return
     }
+    // 先给页面一个处理返回的机会（例如书库的多选状态）——
+    // 事件被 preventDefault() 就说明页面已处理，不要再往上层退
+    const backEvent = new CustomEvent('dshr:back', { cancelable: true })
+    if (!window.dispatchEvent(backEvent)) return
     if (canGoBack) {
       window.history.back()
       return

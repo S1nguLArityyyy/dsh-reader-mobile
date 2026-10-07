@@ -50,6 +50,17 @@ export function LibraryPage() {
 
   const [collectionIds, setCollectionIds] = useState<string[] | null>(null)
 
+  // 安卓返回键：多选状态下先退出多选，不再直接退到桌面（用户反馈）
+  useEffect(() => {
+    const onBack = (event: Event): void => {
+      if (!selectMode) return
+      event.preventDefault()
+      clearSelection()
+    }
+    window.addEventListener('dshr:back', onBack)
+    return () => window.removeEventListener('dshr:back', onBack)
+  }, [selectMode, clearSelection])
+
   // 截图 / 深链用：?collection=1 直接打开合集弹窗
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('collection') !== '1') return

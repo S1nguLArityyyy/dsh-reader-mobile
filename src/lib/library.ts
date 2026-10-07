@@ -82,7 +82,9 @@ export function groupBooks(books: Book[]): BookGroup[] {
       singles.push(book)
       continue
     }
-    const hit = clusters.find((c) => c.key.startsWith(key) || key.startsWith(c.key))
+    const hit = clusters.find(
+        (c) => c.key.startsWith(key) || key.startsWith(c.key) || similarSeries(c.key, key)
+      )
     if (hit) {
       hit.books.push(book)
       if (key.length < hit.key.length) hit.key = key
@@ -119,4 +121,23 @@ export function allSeriesNames(books: Book[]): string[] {
     if (book.seriesKey) names.add(book.seriesKey)
   }
   return [...names].sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+}
+
+/**
+ * 判断两个"去掉卷号的书名"是否属于同一系列。
+ *
+ * 规则：字符重合度 ≥ 0.6 视为同一系列。
+ * 例：「败北女角太多了」vs「败犬女主太多了」→ 共有 败/女/太/多/了 5 个字，5/7 ≈ 0.71 ✓ 归为一组。
+ * 长度差太大直接判否，避免「某某作品集」被并进某一卷。
+ */
+function similarSeries(a: string, b: string): boolean {
+  if (a.length < 3 || b.length < 3) return false
+  const min = Math.min(a.length, b.length)
+  const max = Math.max(a.length, b.length)
+  if (max - min > min) return false
+  const setA = new Set(a)
+  const setB = new Set(b)
+  let shared = 0
+  for (const ch of setB) if (setA.has(ch)) shared += 1
+  return shared / Math.min(setA.size, setB.size) >= 0.6
 }

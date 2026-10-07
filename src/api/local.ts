@@ -1,5 +1,5 @@
 import { unzipSync } from 'fflate'
-import { getBook, type StoredBook } from '../data/db'
+import { deleteBook, getBook, type StoredBook } from '../data/db'
 import { readChapterFromZip } from '../data/epub'
 import { coverUrlOf, importEpubFile, pickEpubFiles } from '../data/import'
 import { listBooks } from '../data/db'
@@ -299,6 +299,24 @@ const idleSync: SyncState = {
   message: '手机端本地模式：网盘同步尚未接入'
 }
 
+/* ---------- 被"删除"的书：内置示例书在 APK 里删不掉，记一个隐藏标记 ---------- */
+const HIDDEN_KEY = 'dsh.hiddenBooks'
+
+function readHidden(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? '[]') as string[]
+  } catch {
+    return []
+  }
+}
+
+function writeHidden(ids: string[]): void {
+  try {
+    localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids))
+  } catch {
+    /* 存不进去也无妨 */
+  }
+}
 /* ---------- 本机导入的书：IndexedDB 取字节 → zip → 章节 ---------- */
 const zipCache = new Map<string, Map<string, Uint8Array>>()
 const urlCache = new Map<string, string>()
@@ -415,7 +433,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '0.9.15',
+        version: '0.9.16',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -474,12 +492,26 @@ export function createLocalApi(): unknown {
         } catch {
           /* IndexedDB 不可用就只显示内置书 */
         }
-        return [...stored, builtIn]
+        const hidden = readHidden()
+        return [...stored, builtIn].filter((book) => !hidden.includes(book.id))
       },
       importDialog: () => importFiles(),
       importFolderDialog: () => importFiles(),
       importPaths: async () => ({ books: [], errors: [] }),
-      remove: async () => undefined,
+      remove: async (bookId: string) => {
+        // 内置示例书打包在 APK 里删不掉 → 记一个隐藏标记；本机导入的书直接从 IndexedDB 删除
+        if (bookId.startsWith('sha1:')) {
+          try {
+            await deleteBook(bookId)
+          } catch {
+            /* 忽略 */
+          }
+        } else {
+          const hidden = readHidden()
+          if (!hidden.includes(bookId)) writeHidden([...hidden, bookId])
+        }
+        return undefined
+      },
       update: async () => undefined,
       markSyncUpload: async () => [],
       reveal: async () => false,
