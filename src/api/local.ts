@@ -422,7 +422,18 @@ async function syncLanRecords(): Promise<{ ok: boolean; message: string }> {
   }
   if (secondsChanged > 0) writeSessions([...map.values()])
 
-  return { ok: true, message: `已合并电脑端记录：进度 ${progressChanged} 条 · 时长 ${secondsChanged} 条` }
+  // 报告合并后的【本机真实数字】便于一眼定位 ✓
+  const finalProgress = readProgress()
+  const finalSessions = readSessions()
+  const today = dayKey()
+  const todaySeconds = finalSessions.filter((row) => row.day === today).reduce((total, row) => total + row.seconds, 0)
+  const inProgress = Object.values(finalProgress).filter((item) => (item.percent ?? 0) > 0.001).length
+  return {
+    ok: true,
+    message:
+      `已合并电脑记录：进度 +${progressChanged} · 时长 +${secondsChanged}` +
+      `｜本机：进度 ${Object.keys(finalProgress).length} 条（在读 ${inProgress}）· 今日 ${Math.floor(todaySeconds / 60)} 分 ${todaySeconds % 60} 秒`
+  }
 }
 async function downloadLanBooks(): Promise<SyncState> {
   // 顺手给旧书补算封面主色（旧版本记录里没有该字段 ✗ 详情页会显示错误的哈希色 ✓）
@@ -801,7 +812,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.1.10',
+        version: '2.1.11',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
