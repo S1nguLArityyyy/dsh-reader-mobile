@@ -3936,3 +3936,9 @@
 .reader-viewport {
   touch-action: pan-y;
 }
+/* ================= 探路测试页 / 长内容页：底部留白 =================
+   之前最后几条会被底部导航挡住（用户反馈"这个界面也显示不全"） */
+.probe-page,
+.page {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+}

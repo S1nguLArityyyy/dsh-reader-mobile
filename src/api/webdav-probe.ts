@@ -185,7 +185,7 @@ export async function runWebDavProbe(
   // 4) PUT：写一个文件
   await step(
     'PUT',
-    `${dirName}/mobile-probe/probe.json`,
+    `${dirName}/probe.json`,
     () => send('PUT', probeFile, options, payload, { 'Content-Type': 'application/json; charset=utf-8' }),
     (response) =>
       [200, 201, 204].includes(response.status)
@@ -196,7 +196,7 @@ export async function runWebDavProbe(
   // 5) GET：读回来，并核对内容
   await step(
     'GET',
-    `${dirName}/mobile-probe/probe.json`,
+    `${dirName}/probe.json`,
     () => send('GET', probeFile, options),
     (response) =>
       response.status !== 200
@@ -209,7 +209,7 @@ export async function runWebDavProbe(
   // 6) DELETE：清理
   await step(
     'DELETE',
-    `${dirName}/mobile-probe/probe.json`,
+    `${dirName}/probe.json`,
     () => send('DELETE', probeFile, options),
     (response) =>
       [200, 204].includes(response.status)
@@ -222,7 +222,7 @@ export async function runWebDavProbe(
   // 7) 再列一次目录，确认前面的操作真的落到了云端
   await step(
     'PROPFIND',
-    `${dirName}/mobile-probe/ 复查`,
+    `${dirName}/ 复查`,
     () => send('PROPFIND', `${probeDir}/`, options),
     (response) =>
       response.status === 207
