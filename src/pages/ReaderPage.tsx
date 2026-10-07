@@ -77,7 +77,11 @@ export function ReaderPage() {
   )
   const columns = mode === 'paged' && available >= MIN_COLUMN * 2 + COLUMN_GAP ? 2 : 1
   const columnWidth = useMemo(() => {
-    if (columns === 1) return Math.min(readerSettings?.pageWidth ?? 720, Math.max(MIN_COLUMN, available))
+    // 单栏：版心宽度 = min(设置值, 可用宽)，只保留一个很小的安全下限。
+    // 原来写成 Math.max(MIN_COLUMN, available) 有两处致命影响：
+    //   ① 页边距只影响 available，被这个 max 直接吃掉 → 翻页模式页边距无效
+    //   ② min(pageWidth, MIN_COLUMN) 等于 MIN_COLUMN → pageWidth ≥ MIN_COLUMN 时版心宽度无效
+    if (columns === 1) return Math.max(160, Math.min(readerSettings?.pageWidth ?? 720, available))
     return Math.floor((available - COLUMN_GAP) / 2)
   }, [columns, available, readerSettings?.pageWidth])
   const screenWidth = columns * columnWidth + (columns - 1) * COLUMN_GAP
