@@ -14,7 +14,7 @@ import type { ReactNode } from 'react'
 import { useApp } from '../store/app'
 import { BookCover } from '../components/BookCover'
 import { EmptyState, ProgressRing, SegmentedControl } from '../components/ui'
-import { dayKey, durationParts, durationText, formatDate, percentText } from '../lib/format'
+import { bookBarColor, dayKey, durationParts, durationText, formatDate, percentText } from '../lib/format'
 
 function StatCard({
   icon,
@@ -253,7 +253,6 @@ export function StatsPage() {
               const day = dayMap.get(cell.key)
               const seconds = day?.seconds ?? 0
               const level = calendarMode === 'heatmap' ? heatLevel(seconds) : 0
-              const firstBook = day?.bookIds[0] ? bookMap.get(day.bookIds[0]) : undefined
               const classes = ['cal-cell']
               if (!cell.inMonth) classes.push('muted')
               if (calendarMode === 'calendar' && seconds > 0 && cell.inMonth) classes.push('has-reading')
@@ -269,8 +268,15 @@ export function StatsPage() {
                   }}
                 >
                   <span className="cal-day">{cell.day}</span>
-                  {calendarMode === 'calendar' && seconds > 0 && firstBook && cell.inMonth ? (
-                    <span className="cal-chip">{firstBook.title}</span>
+                  {cell.inMonth && day && day.bookIds.length > 0 ? (
+                    <span className="cal-bars">
+                      {day.bookIds.slice(0, 3).map((id) => {
+                        const readBook = bookMap.get(id)
+                        return readBook ? (
+                          <i key={id} className="cal-bar" style={{ background: bookBarColor(readBook) }} />
+                        ) : null
+                      })}
+                    </span>
                   ) : null}
                 </button>
               )
@@ -334,7 +340,8 @@ export function StatsPage() {
           ) : (
             activeBooks.map((book) => (
               <button key={book.id} className="day-tag" onClick={() => void openReader(book.id)}>
-                {book.title}
+                <i className="day-tag-bar" style={{ background: bookBarColor(book) }} />
+                <span>{book.title}</span>
               </button>
             ))
           )}

@@ -1,7 +1,14 @@
 /** 通用格式化工具 */
 
-export function mediaUrl(absPath: string): string {
-  return `dsh://media/${encodeURIComponent(absPath)}`
+/**
+ * 媒体地址。
+ *
+ * 桌面端这里返回的是 Electron 自定义协议 `dsh://media/...`；
+ * 手机端没有那套协议，coverFile 直接就是**能用的地址**（打包进来的相对路径、data: 或 blob:），
+ * 所以原样返回即可。
+ */
+export function mediaUrl(path: string): string {
+  return path
 }
 
 export interface DurationPart {
@@ -200,6 +207,11 @@ export function coverFade(color: string | null, fallbackSeed: string): string {
  */
 export function bookAccentColor(book: { coverFile: string | null; coverColor: string | null }): string | null {
   return book.coverFile ? book.coverColor : null
+}
+
+/** 日历上代表某本书的**纯色**（横杠用）：有封面图用取色，否则用占位封面同一套色相 */
+export function bookBarColor(book: { id: string; coverFile: string | null; coverColor: string | null }): string {
+  return bookAccentColor(book) ?? hsl(hueOf(book.id), 34, 46)
 }
 
 /** 由封面主色生成一整块彩色渐变（详情弹窗头部，白字始终可读） */
