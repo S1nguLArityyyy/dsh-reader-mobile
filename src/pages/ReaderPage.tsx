@@ -24,6 +24,24 @@ export function ReaderPage() {
   const [panel, setPanel] = useState<'none' | 'toc' | 'settings' | 'tools'>('none')
   /** 跳转前的位置：点过目录/跳转后可以用「跳转返回」回来 */
   const [lastPos, setLastPos] = useState<{ chapterIndex: number } | null>(null)
+  /* ---------- 一级界面底部状态条：电量 · 页数/总章 · 百分比 · 时间 ---------- */
+  const [clock, setClock] = useState('')
+  const [battery, setBattery] = useState<number | null>(null)
+  useEffect(() => {
+    const tick = (): void => {
+      const now = new Date()
+      setClock(`${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`)
+    }
+    tick()
+    const timer = window.setInterval(tick, 20000)
+    // 电量：Chromium / 安卓 WebView 支持 Battery Status API
+    const nav = navigator as Navigator & { getBattery?: () => Promise<{ level: number }> }
+    void nav
+      .getBattery?.()
+      .then((info) => setBattery(Math.round(info.level * 100)))
+      .catch(() => setBattery(null))
+    return () => window.clearInterval(timer)
+  }, [])
   const [ratio, setRatio] = useState(0)
   const [page, setPage] = useState(0)
   const [pages, setPages] = useState(1)
@@ -507,24 +525,6 @@ export function ReaderPage() {
     </div>
   )
 
-  /* ---------- 一级界面底部状态条：电量 · 页数/总章 · 百分比 · 时间 ---------- */
-  const [clock, setClock] = useState('')
-  const [battery, setBattery] = useState<number | null>(null)
-  useEffect(() => {
-    const tick = (): void => {
-      const now = new Date()
-      setClock(`${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`)
-    }
-    tick()
-    const timer = window.setInterval(tick, 20000)
-    // 电量：Chromium / 安卓 WebView 支持 Battery Status API
-    const nav = navigator as Navigator & { getBattery?: () => Promise<{ level: number }> }
-    void nav
-      .getBattery?.()
-      .then((info) => setBattery(Math.round(info.level * 100)))
-      .catch(() => setBattery(null))
-    return () => window.clearInterval(timer)
-  }, [])
 
   return (
     <div className="reader" style={readerStyle}>
