@@ -92,8 +92,8 @@ function heatLevel(seconds: number): number {
 
 
 export function StatsPage() {
-  const stats = useApp((s) => s.stats)
-  const books = useApp((s) => s.books)
+  const stats = useApp((s) => s.stats) ?? null
+  const books = useApp((s) => s.books) ?? []
   const openReader = useApp((s) => s.openReader)
 
   const today = new Date()

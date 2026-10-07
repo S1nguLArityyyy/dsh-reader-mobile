@@ -15,7 +15,7 @@ import { groupBooks, SINGLES_KEY } from '../lib/library'
 export function Sidebar() {
   const route = useApp((s) => s.route)
   const go = useApp((s) => s.go)
-  const books = useApp((s) => s.books)
+  const books = useApp((s) => s.books) ?? []
   const seriesFilter = useApp((s) => s.seriesFilter)
   const setSeriesFilter = useApp((s) => s.setSeriesFilter)
   const seriesOpen = useApp((s) => s.seriesOpen)

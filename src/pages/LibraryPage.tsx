@@ -24,7 +24,7 @@ import { bookAccentColor, percentText, remainingText } from '../lib/format'
 import { groupBooks, sortBooks } from '../lib/library'
 
 export function LibraryPage() {
-  const books = useApp((s) => s.books)
+  const books = useApp((s) => s.books) ?? []
   const stats = useApp((s) => s.stats)
   const settings = useApp((s) => s.settings)
   const seriesFilter = useApp((s) => s.seriesFilter)
@@ -32,7 +32,7 @@ export function LibraryPage() {
   const search = useApp((s) => s.search)
   const setSearch = useApp((s) => s.setSearch)
   const selectMode = useApp((s) => s.selectMode)
-  const selected = useApp((s) => s.selected)
+  const selected = useApp((s) => s.selected) ?? []
   const toggleSelectMode = useApp((s) => s.toggleSelectMode)
   const toggleSelected = useApp((s) => s.toggleSelected)
   const selectAll = useApp((s) => s.selectAll)
