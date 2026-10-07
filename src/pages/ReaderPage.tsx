@@ -61,15 +61,15 @@ export function ReaderPage() {
   const readerSettings = settings?.reader
   const theme = READER_THEMES[readerSettings?.theme ?? 'paper']
   const mode = readerSettings?.mode ?? 'scroll'
-  // 页边距：两种模式共用（翻页模式的独立页边距已移除）
-  const padding = readerSettings?.padding ?? 36
+  // 页边距：滚动用 padding；翻页用 pagedPadding（没设就回落到 padding）
+  const padding = readerSettings?.padding ?? 28
+  const pagedPadding = readerSettings?.pagedPadding ?? readerSettings?.padding ?? 28
   const { bookId, chapters, chapterIndex, html, loading, book } = reader
 
   /* ---------- 分栏计算：按窗口宽度决定单栏还是双栏 ---------- */
-  /* 分页可用宽：翻页模式的左右留白**由这里算**（不再依赖 CSS padding ——
-     之前两次改 CSS 都看不到效果，因为翻页时正文宽度实际由这段 JS 决定）。
-     视口宽度 = 可用宽，居中显示，两侧自然形成留白。 */
-  const pagedSideMargin = padding + 8
+  /* 分页可用宽：翻页模式的左右留白**由这里算**（正文宽度实际由这段 JS 决定，改 CSS 是无效的）。
+     翻页用自己那套页边距（pagedPadding），默认与滚动一致，不再额外加宽。 */
+  const pagedSideMargin = pagedPadding
   const available = Math.max(
     0,
     mode === 'paged'
@@ -78,11 +78,14 @@ export function ReaderPage() {
   )
   const columns = mode === 'paged' && available >= MIN_COLUMN * 2 + COLUMN_GAP ? 2 : 1
   const columnWidth = useMemo(() => {
-    // 单栏：**翻页模式不再使用版心宽度**（用户要求移除该项），只按可用宽铺满；
-    // 滚动模式的版心宽度由 .reader-page 的 max-width 控制，不受这里影响。
-    if (columns === 1) return Math.max(160, available)
+    // 单栏：版心宽度 = min(设置值, 可用宽)，只保留很小的安全下限（翻页用自己那套版心宽度）
+    const wanted =
+      mode === 'paged'
+        ? (readerSettings?.pagedPageWidth ?? readerSettings?.pageWidth ?? 720)
+        : (readerSettings?.pageWidth ?? 720)
+    if (columns === 1) return Math.max(160, Math.min(wanted, available))
     return Math.floor((available - COLUMN_GAP) / 2)
-  }, [columns, available])
+  }, [columns, available, mode, readerSettings?.pageWidth, readerSettings?.pagedPageWidth])
   const screenWidth = columns * columnWidth + (columns - 1) * COLUMN_GAP
   const step = screenWidth + COLUMN_GAP
 
@@ -904,7 +907,7 @@ export function ReaderPage() {
                 }
               />
             </div>
-            <div className="panel-row" style={{ display: mode === 'paged' ? 'none' : undefined }}>
+            <div className="panel-row">
               <div className="panel-row-title">
                 <span>版心宽度</span>
                 <span className="range-value">
@@ -933,13 +936,13 @@ export function ReaderPage() {
                 }
               />
             </div>
-            <div className="panel-row" style={{ display: mode === 'paged' ? 'none' : undefined }}>
+            <div className="panel-row">
               <div className="panel-row-title">
                 <span>页边距</span>
-                <span className="range-value">{padding} px</span>
+                <span className="range-value">{pagedPadding === padding ? padding : pagedPadding} px</span>
               </div>
               <Slider
-                value={padding}
+                value={mode === 'paged' ? pagedPadding : padding}
                 min={12}
                 max={80}
                 step={4}
