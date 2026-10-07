@@ -264,9 +264,12 @@ let currentProgress = { ...progress }
 
 export function createMockApi(): unknown {
   const chapterHtml = (bookId: string, index: number): string => {
+    const book = BOOKS.find((b) => b.id === bookId) ?? BOOKS[0]
     const title = CHAPTER_TITLES[bookId]?.[index] ?? `第 ${index + 1} 章`
+    // 正文里带上书名与作者：换书时一眼能看出确实换了书
+    //（以前所有书共用同一段示例文字，点进哪本都是同样的内容，用户反馈过）
     const body = Array.from({ length: 8 }, (_, i) => `<p>${PARAGRAPHS[(index * 3 + i) % PARAGRAPHS.length]}</p>`).join('')
-    return `<h2>${title}</h2>${body}`
+    return `<h2>${title}</h2><p>《${book.title}》· ${book.author}</p>${body}`
   }
 
   const noop = async (): Promise<never> => {

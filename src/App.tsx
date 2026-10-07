@@ -73,9 +73,16 @@ export default function App() {
   /* 页面切换：旧页面飞出、新页面飞入 */
   useEffect(() => {
     if (route === lastRoute.current) return
-    const dir = ROUTE_ORDER[route] >= ROUTE_ORDER[lastRoute.current] ? 1 : -1
-    setPrev({ route: lastRoute.current, dir })
+    const from = lastRoute.current
     lastRoute.current = route
+    // 进/出阅读器不做推拉动画：阅读器是整屏的，没有"左右"可言，
+    // 硬套页面推拉会变成抽搐式回弹（用户反馈过）
+    if (route === 'reader' || from === 'reader') {
+      setPrev(null)
+      return
+    }
+    const dir = ROUTE_ORDER[route] >= ROUTE_ORDER[from] ? 1 : -1
+    setPrev({ route: from, dir })
     const timer = window.setTimeout(() => setPrev(null), 260)
     return () => window.clearTimeout(timer)
   }, [route])
