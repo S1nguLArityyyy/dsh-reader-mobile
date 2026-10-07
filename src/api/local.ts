@@ -1,7 +1,6 @@
 import { AUTH_URL as baiduAuthUrl, accessToken as baiduToken, diagnose as baiduOpenDiagnose, readFile as baiduOpenReadFile, readJson as baiduOpenReadJson } from '../data/baidu-open'
 import { unzipSync } from 'fflate'
 import {
-  diagnose as baiduDiagnose,
   readSession
 } from '../data/baidu'
 import { deleteBook, getBook, type StoredBook } from '../data/db'
@@ -325,8 +324,8 @@ async function downloadCloudBooks(): Promise<SyncState> {
   const files = await davReadManifest(config)
   const keys = Object.keys(files)
   if (keys.length === 0) {
-    const report = await baiduDiagnose().catch(() => '诊断本身失败')
-    return writeSyncState({ message: `云端清单为空。诊断：${report}` })
+    const report = await baiduOpenDiagnose().catch(() => '诊断本身失败')
+    return writeSyncState({ message: `云端清单为空（清单里 0 本书）。诊断：${report}` })
   }
   const have = new Set((await listBooks()).map((item) => item.id))
   let done = 0
@@ -379,8 +378,8 @@ async function downloadBaiduBooks(): Promise<SyncState> {
   const files = ((manifest?.files ?? {}) as Record<string, { title?: string; size?: number }>) || {}
   const keys = Object.keys(files)
   if (keys.length === 0) {
-    const report = await baiduDiagnose().catch(() => '诊断本身失败')
-    return writeSyncState({ message: `云端清单为空。诊断：${report}` })
+    const report = await baiduOpenDiagnose().catch(() => '诊断本身失败')
+    return writeSyncState({ message: `云端清单为空（清单里 0 本书）。诊断：${report}` })
   }
   const have = new Set((await listBooks()).map((item) => item.id))
   let done = 0
@@ -608,7 +607,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '1.5.1',
+        version: '1.5.2',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
