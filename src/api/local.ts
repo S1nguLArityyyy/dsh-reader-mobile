@@ -372,10 +372,17 @@ async function syncLanRecords(): Promise<{ ok: boolean; message: string }> {
   const pulled = await fetchLanRecords(base)
   if (!pulled.ok) return { ok: false, message: pulled.message }
 
+  // 统一书的键：电脑端给的是 40 位纯 hex ✓ 手机端内部一律是 sha1:<hex> ✓ 必须补前缀才能对上 ✓
+  const normalizeBookId = (raw: string): string => {
+    const value = String(raw ?? '')
+    if (/^[0-9a-f]{40}$/i.test(value)) return `sha1:${value.toLowerCase()}`
+    return value
+  }
   // 进度合并
   const local = readProgress()
   let progressChanged = 0
-  for (const [bookId, remote] of Object.entries(pulled.progress)) {
+  for (const [rawId, remote] of Object.entries(pulled.progress)) {
+    const bookId = normalizeBookId(rawId)
     const mine = local[bookId]
     const remoteAt = Number(remote.updatedAt ?? 0)
     const mineAt = Number(mine?.updatedAt ?? 0)
@@ -401,7 +408,7 @@ async function syncLanRecords(): Promise<{ ok: boolean; message: string }> {
   for (const row of rows) map.set(keyOf(row.bookId, row.day, String(row.deviceId ?? 'mobile-local')), { ...row, deviceId: row.deviceId ?? 'mobile-local' })
   let secondsChanged = 0
   for (const item of pulled.sessions) {
-    const bookId = String(item.bookId ?? '')
+    const bookId = normalizeBookId(String(item.bookId ?? ''))
     const day = String(item.day ?? '')
     if (!bookId || !day) continue
     const deviceId = String(item.deviceId ?? 'desktop')
@@ -788,7 +795,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.1.2',
+        version: '2.1.3',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
