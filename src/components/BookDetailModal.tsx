@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { useApp } from '../store/app'
 import { BookCover } from './BookCover'
 import { Modal } from './ui'
-import { coverHero, durationText, formatDateTime, formatWordCount, percentText } from '../lib/format'
+import { bookAccentColor, coverHero, durationText, formatDateTime, formatWordCount, percentText } from '../lib/format'
 
 function DetailStat({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
@@ -38,7 +38,7 @@ export function BookDetailModal() {
     <Modal open={Boolean(book)} title="书籍详情" onClose={closeDetail} width={640} variant="sheet">
       {book ? (
         <>
-          <div className="detail-hero" style={{ background: coverHero(book.coverColor, book.id) }}>
+          <div className="detail-hero" style={{ background: coverHero(bookAccentColor(book), book.id) }}>
             <div className="detail-cover">
               <BookCover book={book} />
             </div>

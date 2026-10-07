@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@capacitor/android": "^7.4.3",
+    "@capacitor/app": "^7.1.2",
     "@capacitor/core": "^7.4.3",
     "fast-xml-parser": "^4.5.1",
     "fflate": "^0.8.2",

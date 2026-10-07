@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import App from './App'
 import { ProbePage } from './probe/ProbePage'
 import { createMockApi } from './lib/mock-api'
+import { installAndroidBack } from './lib/android-back'
 import './styles/base.css'
 import './styles/app.css'
 
@@ -35,5 +36,8 @@ function Shell() {
     </>
   )
 }
+
+// 安卓返回键：弹窗 → 阅读器 → 应用，逐层退（不装插件，走 history）
+installAndroidBack()
 
 createRoot(container).render(<Shell />)

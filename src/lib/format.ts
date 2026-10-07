@@ -176,9 +176,19 @@ export function coverFade(color: string | null, fallbackSeed: string): string {
   )} 56%, var(--panel) 70%)`
 }
 
+/**
+ * 卡片 / 详情页底色该用哪个颜色。
+ *
+ * 只有**真有封面图**时才用 `coverColor` —— 那个值是从封面图里抽出来的主色，和图片对得上。
+ * 没有封面图时，占位封面用的是 `gradientOf(book.id)`（按 id 生成的色相），
+ * 这时若还用 `coverColor`，卡片底色和封面就会是两个不相干的颜色（踩过：棕色卡片配青色封面）。
+ */
+export function bookAccentColor(book: { coverFile: string | null; coverColor: string | null }): string | null {
+  return book.coverFile ? book.coverColor : null
+}
+
 /** 由封面主色生成一整块彩色渐变（详情弹窗头部，白字始终可读） */
-export function coverHero(color: string | null, fallbackSeed: string): string {
-  const base = color ?? hsl(hueOf(fallbackSeed), 34, 42)
+export function coverHero(color: string | null, fallbackSeed: string): string {  const base = color ?? hsl(hueOf(fallbackSeed), 34, 42)
   const { h, s, l } = hexToHsl(base)
   return `linear-gradient(100deg, ${hsl(h, s, Math.max(20, l - 9))} 0%, ${hsl(h, s, Math.max(24, l))} 54%, ${hsl(
     h,

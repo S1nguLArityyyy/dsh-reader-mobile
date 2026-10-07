@@ -2679,4 +2679,78 @@
   .reader-body.paged {
     padding: 18px var(--reader-padding) 18px;
   }
+
+  /* ---------- 书籍详情面板 ---------- */
+  /*
+   * 进度那一行横排会把「继续阅读」按钮挤出屏幕外 —— 按钮点不着、进不了阅读（踩过），
+   * 手机上改成竖排、按钮占满整行。
+   */
+  .detail-progress {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .detail-progress .btn {
+    width: 100%;
+  }
+
+  /* 四列卡片在手机上放不下（会横向溢出被切掉）：详情统计与统计页概览都改两列 */
+  .detail-stats,
+  .stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* ---------- 统计页：只留日历，书目移到「点某一天」的二级页 ---------- */
+  .history-card {
+    display: none;
+  }
+
+  .stats-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 日历格子里塞书名在手机上挤成一团，隐藏掉，改成点格子看当天记录 */
+  .cal-chip {
+    display: none;
+  }
+
+  /* 日历头部（日历/热力图切换 + 月份导航）横排在手机上会挤变形，改竖排 */
+  .calendar-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .calendar-head .segmented {
+    width: 100%;
+  }
+
+  .month-nav {
+    justify-content: space-between;
+  }
+
+  /* 日历格子是 <button>（点击更可靠），把浏览器默认的按钮外观清干净 */
+  .cal-cell {
+    font-family: inherit;
+    color: inherit;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  /* ---------- 安卓 WebView 的焦点/点击高亮（金色描边）与主题不搭，统一去掉 ---------- */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:focus,
+  button:focus-visible {
+    outline: none;
+  }
+
+  /* 今日阅读卡片：目标环那一行的文字落在渐变浅色区上，得用深色才看得清 */
+  .today-goal,
+  .today-goal-sub {
+    color: rgba(0, 0, 0, 0.6);
+  }
 }

@@ -1,0 +1,83 @@
+/* 日历二级页（某一天的阅读记录） */
+
+.day-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  margin-bottom: 12px;
+  border-radius: var(--r-md);
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.day-summary b {
+  color: var(--text);
+}
+
+.day-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.day-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--panel);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.day-row:active {
+  background: var(--hover);
+}
+
+.day-cover {
+  width: 40px;
+  flex: 0 0 40px;
+  aspect-ratio: 2 / 3;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--panel-soft);
+}
+
+.day-cover img,
+.day-cover .book-cover-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  font-size: 8px;
+}
+
+.day-main {
+  min-width: 0;
+}
+
+.day-title {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.day-meta {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.day-empty {
+  padding: 18px 4px;
+  font-size: 13px;
+  color: var(--text-3);
+  text-align: center;
+}

@@ -21,7 +21,19 @@ export default defineConfig({
   server: {
     host: '127.0.0.1',
     port: 5200,
-    strictPort: true
+    strictPort: true,
+    watch: {
+      // 别去监听工具产物目录：截图/探针/编辑器临时文件会让 watcher 直接 EBUSY 崩掉（踩过两次）
+      ignored: [
+        '**/shots/**',
+        '**/.edge-probe/**',
+        '**/.edge-profile*/**',
+        '**/android/**',
+        '**/dist/**',
+        '**/.*.tmpdir/**',
+        '**/*.tmp'
+      ]
+    }
   },
   build: {
     outDir: 'dist',

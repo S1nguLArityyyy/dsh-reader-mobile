@@ -14,6 +14,7 @@ import type { ReactNode } from 'react'
 import { useApp } from '../store/app'
 import { BookCover } from '../components/BookCover'
 import { EmptyState, ProgressRing, SegmentedControl } from '../components/ui'
+import { DayDetailModal } from '../components/DayDetailModal'
 import { dayKey, durationParts, durationText, formatDate, percentText } from '../lib/format'
 
 function StatCard({
@@ -105,6 +106,8 @@ export function StatsPage() {
     new URLSearchParams(window.location.search).get('cal') === 'heatmap' ? 'heatmap' : 'calendar'
   )
   const [range, setRange] = useState<Range>('all')
+  // 点日历某一天 → 二级页里看当天读了哪些书（手机上不再把书目堆在日历旁边）
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
 
   const bookMap = useMemo(() => new Map(books.map((b) => [b.id, b])), [books])
 
@@ -230,16 +233,25 @@ export function StatsPage() {
               if (calendarMode === 'calendar' && seconds > 0 && cell.inMonth) classes.push('has-reading')
               if (calendarMode === 'heatmap' && level > 0) classes.push(`heat-${level}`)
               return (
-                <div
+                <button
+                  type="button"
                   key={cell.key}
                   className={classes.join(' ')}
                   title={seconds > 0 ? `${cell.key} · ${durationText(seconds)}` : cell.key}
+                  onClick={() => {
+                    if (cell.inMonth) setSelectedDay(cell.key)
+                  }}
+                  onPointerDown={() => {
+                    // 安卓 WebView 里这排格子的 click 合成不可靠（模拟器上点不动），
+                    // pointerdown 更早也更稳，两个都挂上，哪条先到都行
+                    if (cell.inMonth) setSelectedDay(cell.key)
+                  }}
                 >
                   <span className="cal-day">{cell.day}</span>
                   {calendarMode === 'calendar' && seconds > 0 && firstBook && cell.inMonth ? (
                     <span className="cal-chip">{firstBook.title}</span>
                   ) : null}
-                </div>
+                </button>
               )
             })}
           </div>
@@ -286,6 +298,8 @@ export function StatsPage() {
           )}
         </div>
       </div>
+
+      <DayDetailModal day={selectedDay} onClose={() => setSelectedDay(null)} />
     </div>
   )
 }

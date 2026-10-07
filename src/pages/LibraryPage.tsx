@@ -20,7 +20,7 @@ import { useApp } from '../store/app'
 import { BookCover } from '../components/BookCover'
 import { CollectionModal } from '../components/CollectionModal'
 import { Dropdown, EmptyState, ProgressRing } from '../components/ui'
-import { coverFade, percentText, remainingText } from '../lib/format'
+import { bookAccentColor, coverFade, percentText, remainingText } from '../lib/format'
 import { groupBooks, sortBooks } from '../lib/library'
 
 export function LibraryPage() {
@@ -387,7 +387,12 @@ export function LibraryPage() {
           {!seriesFilter && !query ? (
             <div
               className="card today-card"
-              style={{ background: coverFade(continueBook?.coverColor ?? null, continueBook?.id ?? 'empty') }}
+              style={{
+                background: coverFade(
+                  continueBook ? bookAccentColor(continueBook) : null,
+                  continueBook?.id ?? 'empty'
+                )
+              }}
             >
               <div className="today-cover">{continueBook ? <BookCover book={continueBook} /> : null}</div>
 
