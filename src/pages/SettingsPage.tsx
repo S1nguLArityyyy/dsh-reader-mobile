@@ -205,7 +205,9 @@ export function SettingsPage() {
                   ? `已连接：${sync.account ?? ''}`
                   : syncSettings.provider === 'webdav'
                     ? '尚未连接：填写下面的地址、账号、应用密码后点「保存并连接」'
-                    : '尚未连接：先选一个目录作为云端'}
+                    : syncSettings.provider === 'baidu'
+                      ? '尚未连接：点「连接」跳到百度登录页，登录完按返回键回到 App，再点一次「连接」'
+                      : '尚未连接：先选一个目录作为云端'}
               </div>
             </div>
             <div className="setting-control">
@@ -216,7 +218,7 @@ export function SettingsPage() {
                 </button>
               ) : (
                 <button className="btn btn-ghost btn-sm" onClick={() => void connectSync()}>
-                  {sync.loggedIn ? '更换目录' : '连接'}
+                  {sync.loggedIn ? (syncSettings.provider === 'baidu' ? '重新连接' : '更换目录') : '连接'}
                 </button>
               )}
             </div>
