@@ -668,7 +668,13 @@ export function ReaderPage() {
             {/* 第二行：滑块与提示语在**同一个气泡**里（拖动时每 1% 震动） */}
             <div className="tool-seek">
               <div className="tool-seek-row">
-                <button className="icon-btn sm" onClick={() => turn(-1)} title="上一页">
+                {/* 两侧箭头 = 章节跳转；中间滚动条 = 翻页/章内定位 */}
+                <button
+                  className="icon-btn sm"
+                  onClick={() => void goToChapter(chapterIndex - 1)}
+                  disabled={chapterIndex === 0}
+                  title="上一章"
+                >
                   <ChevronLeft size={17} />
                 </button>
                 <div
@@ -679,7 +685,12 @@ export function ReaderPage() {
                   <i style={{ width: `${percentText(chapterRatio)}%` }} />
                   <span className="reader-progress-knob" style={{ left: `${percentText(chapterRatio)}%` }} />
                 </div>
-                <button className="icon-btn sm" onClick={() => turn(1)} title="下一页">
+                <button
+                  className="icon-btn sm"
+                  onClick={() => void goToChapter(chapterIndex + 1)}
+                  disabled={chapterIndex >= chapters.length - 1}
+                  title="下一章"
+                >
                   <ChevronRight size={17} />
                 </button>
               </div>

@@ -3279,16 +3279,31 @@
     background: var(--hover);
   }
 
-  /* 第一行：搜索占三分之二，取消 / 退出各占六分之一（纯图标） */
+  /* 第一行：搜索自适应宽度（不再占 2/3 那么宽），右侧取消/退出是**圆角正方形** */
   .tool-row-top {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) 56px 56px;
+    gap: 12px;
     margin-bottom: 12px;
   }
 
-  .tool-bubble-wide {
-    grid-column: span 4;
+  .tool-row-top .tool-bubble-wide {
+    grid-column: auto;
+  }
+
+  .tool-row-top .tool-bubble:not(.tool-bubble-wide) {
+    width: 56px;
+    height: 56px;
+    min-height: 0;
+    padding: 0;
+    border-radius: 16px;
+  }
+
+  /* 滑块轨道：在气泡里必须撑满剩余宽度 —— 之前在 flex 行里被挤成 0 宽，
+     结果"滚动条"整个看不见了（用户截图反馈） */
+  .tool-seek-row .reader-progress {
+    flex: 1 1 auto;
+    min-width: 100px;
   }
 
   /* 跳转返回：阅读页左上角、页眉下方一点（在正文流里，避免遮挡文字） */
