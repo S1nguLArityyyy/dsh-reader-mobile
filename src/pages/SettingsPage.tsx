@@ -11,13 +11,10 @@ import {
   Info,
   Palette,
   Plus,
-  RefreshCw,
-  Type
+  RefreshCw
 } from 'lucide-react'
-import type { ReaderTheme } from '@shared/types'
 import { useApp } from '../store/app'
 import { SegmentedControl, Slider, Switch } from '../components/ui'
-import { FONT_STACKS, READER_THEMES, type FontKey } from '../lib/reader-theme'
 
 const ACCENT_PRESETS = ['#3b6fd4', '#2fa36b', '#d97757', '#8b5cf6', '#e0a028', '#e05b7a', '#0ea5a5']
 
@@ -41,15 +38,9 @@ export function SettingsPage() {
 
   if (!settings) return <div className="page" />
 
-  const reader = settings.reader
   const syncSettings = settings.sync
   const appearance = settings.appearance
-  const theme = READER_THEMES[reader.theme]
   const dav = davDraft ?? { url: syncSettings.webdav.url, username: syncSettings.webdav.username, password: '' }
-
-  const patchReader = (patch: Partial<typeof reader>): void => {
-    void saveSettings({ reader: { ...reader, ...patch } })
-  }
 
   const patchSync = (patch: Partial<typeof syncSettings>): void => {
     void saveSettings({ sync: { ...syncSettings, ...patch } })
@@ -76,167 +67,6 @@ export function SettingsPage() {
       </div>
 
       <div className="settings-wrap">
-        {/* ---------- 阅读偏好 ---------- */}
-        <section className="setting-card">
-          <h3>
-            <Type size={15} style={{ verticalAlign: -2, marginRight: 6 }} />
-            阅读偏好
-          </h3>
-          <div className="setting-hint">这些设置会立即应用到阅读器，并保存在本机。</div>
-
-          <div className="setting-row">
-            <div>
-              <div className="setting-label">字号</div>
-              <div className="setting-desc">正文大小</div>
-            </div>
-            <div className="setting-control">
-              <Slider value={reader.fontSize} min={14} max={30} onChange={(v) => patchReader({ fontSize: v })} />
-              <span className="range-value">{reader.fontSize} px</span>
-            </div>
-          </div>
-
-          <div className="setting-row">
-            <div>
-              <div className="setting-label">行距</div>
-              <div className="setting-desc">行与行之间的距离</div>
-            </div>
-            <div className="setting-control">
-              <Slider
-                value={reader.lineHeight}
-                min={1.4}
-                max={2.6}
-                step={0.1}
-                onChange={(v) => patchReader({ lineHeight: v })}
-              />
-              <span className="range-value">{reader.lineHeight.toFixed(1)}</span>
-            </div>
-          </div>
-
-          <div className="setting-row">
-            <div>
-              <div className="setting-label">版心宽度</div>
-              <div className="setting-desc">正文区域最大宽度</div>
-            </div>
-            <div className="setting-control">
-              <Slider
-                value={reader.pageWidth}
-                min={560}
-                max={920}
-                step={20}
-                onChange={(v) => patchReader({ pageWidth: v })}
-              />
-              <span className="range-value">{reader.pageWidth} px</span>
-            </div>
-          </div>
-
-          <div className="setting-row">
-            <div>
-              <div className="setting-label">页边距</div>
-              <div className="setting-desc">左右留白</div>
-            </div>
-            <div className="setting-control">
-              <Slider
-                value={reader.padding}
-                min={12}
-                max={80}
-                step={4}
-                onChange={(v) => patchReader({ padding: v })}
-              />
-              <span className="range-value">{reader.padding} px</span>
-            </div>
-          </div>
-
-          <div className="setting-row">
-            <div>
-              <div className="setting-label">字体</div>
-              <div className="setting-desc">正文使用的字体族</div>
-            </div>
-            <div className="setting-control">
-              <select
-                className="select"
-                value={reader.fontFamily}
-                onChange={(e) => patchReader({ fontFamily: e.target.value as FontKey })}
-              >
-                {Object.entries(FONT_STACKS).map(([key, spec]) => (
-                  <option key={key} value={key}>
-                    {spec.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="setting-row">
-            <div>
-              <div className="setting-label">阅读主题</div>
-              <div className="setting-desc">只影响阅读器正文区域</div>
-            </div>
-            <div className="setting-control">
-              <div className="theme-swatches">
-                {(Object.keys(READER_THEMES) as ReaderTheme[]).map((key) => (
-                  <button
-                    key={key}
-                    title={READER_THEMES[key].label}
-                    className={`theme-swatch${reader.theme === key ? ' active' : ''}`}
-                    style={{ background: READER_THEMES[key].swatch, color: READER_THEMES[key].text }}
-                    onClick={() => patchReader({ theme: key })}
-                  >
-                    A
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="setting-row">
-            <div>
-              <div className="setting-label">翻页方式</div>
-              <div className="setting-desc">滚动阅读或按页翻动</div>
-            </div>
-            <div className="setting-control">
-              <SegmentedControl<'scroll' | 'paged'>
-                value={reader.mode}
-                onChange={(v) => patchReader({ mode: v })}
-                options={[
-                  { value: 'scroll', label: '滚动' },
-                  { value: 'paged', label: '翻页' }
-                ]}
-              />
-            </div>
-          </div>
-
-          <div className="setting-row">
-            <div>
-              <div className="setting-label">每日阅读目标</div>
-              <div className="setting-desc">「今日阅读」环形进度按它计算，用来养成阅读习惯</div>
-            </div>
-            <div className="setting-control">
-              <Slider
-                value={settings.dailyGoalMinutes}
-                min={10}
-                max={180}
-                step={5}
-                onChange={(v) => void saveSettings({ dailyGoalMinutes: v })}
-              />
-              <span className="range-value">{settings.dailyGoalMinutes} 分钟</span>
-            </div>
-          </div>
-
-          <div
-            className="preview-box"
-            style={{
-              background: theme.bg,
-              color: theme.text,
-              fontSize: reader.fontSize,
-              lineHeight: reader.lineHeight,
-              fontFamily: FONT_STACKS[reader.fontFamily].css
-            }}
-          >
-            <p>十月的风从窗缝里钻进来，翻动了桌上的书页。他把书按住，就着午后那点发白的光，又读了一页。</p>
-            <p>“所谓阅读，不过是把别人的时间借来，安放在自己的生命里。”</p>
-          </div>
-        </section>
-
         {/* ---------- 外观 ---------- */}
         <section className="setting-card">
           <h3>
