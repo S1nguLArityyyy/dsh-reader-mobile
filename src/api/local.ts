@@ -335,7 +335,7 @@ async function downloadCloudBooks(): Promise<SyncState> {
     const title = files[key]?.title ?? key.slice(0, 12)
     if (have.has(id)) continue
     writeSyncState({
-      message: `正在下载 ${done + 1}/${keys.length}：${title}`,
+      message: `正在下载 ${done + 1}/${keys.length}：${title}（每本 6~10MB，约需数十秒）`,
       transferred: done,
       total: keys.length
     })
@@ -363,10 +363,12 @@ async function downloadCloudBooks(): Promise<SyncState> {
 }
 /** 「全部下载云端书籍」（百度网盘版）：manifest.json 取清单 → 逐本下载 → 解析入库 */
 async function downloadBaiduBooks(): Promise<SyncState> {
+  // 置 running：面板才会显示已用时秒表、才会禁用「立即同步」（否则看起来像没反应）
+  writeSyncState({ phase: 'running', message: '正在读取云端清单…' })
   const settings = readSettings()
   const remote = '/' + String(settings.sync.remoteDir || 'DshReader').replace(/^\/+|\/+$/g, '')
   const session = readSession()
-  if (!session) return writeSyncState({ message: '请先点「连接」登录百度网盘' })
+  if (!session) return writeSyncState({ phase: 'idle', message: '请先点「连接」登录百度网盘' })
   // 走开放平台（access_token）：网页会话下载需要网页签名 sign，是死路 ✗
   if (!(await baiduToken())) {
     const report = await baiduOpenDiagnose().catch(() => 'n/a')
@@ -389,7 +391,7 @@ async function downloadBaiduBooks(): Promise<SyncState> {
     const title = files[key]?.title ?? key.slice(0, 12)
     if (have.has(id)) continue
     writeSyncState({
-      message: `正在下载 ${done + 1}/${keys.length}：${title}`,
+      message: `正在下载 ${done + 1}/${keys.length}：${title}（每本 6~10MB，约需数十秒）`,
       transferred: done,
       total: keys.length
     })
@@ -403,6 +405,7 @@ async function downloadBaiduBooks(): Promise<SyncState> {
     else failed.push(`${title}（${result.error ?? '解析失败'}）`)
   }
   return writeSyncState({
+    phase: 'idle',
     message:
       failed.length > 0
         ? `已下载 ${done} 本，失败 ${failed.length} 本：${failed.slice(0, 3).join('、')}`
@@ -607,7 +610,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '1.5.8',
+        version: '1.5.9',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
