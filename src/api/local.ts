@@ -672,7 +672,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '1.9.0',
+        version: '2.0.0',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -875,12 +875,33 @@ export function createLocalApi(): unknown {
 
     stats: {
       get: async (): Promise<StatsPayload> => {
-        const data = await loadLibrary()
-        const book = toBook(data)
-        const progress = readProgress()[book.id]
+        // ★ 按【全部书籍】统计（此前只统计内置示例书 ✗ 所以导入的书永远 0 秒 ✗）
+        const builtIn = toBook(await loadLibrary())
+        const stored = await listBooks().catch(() => [])
+        const progressMap = readProgress()
         const sessions = readSessions()
         const today = dayKey()
-        const totalSeconds = sessions.reduce((total, row) => total + row.seconds, 0)
+
+        const secondsByBook = new Map<string, number>()
+        for (const row of sessions) {
+          secondsByBook.set(row.bookId, (secondsByBook.get(row.bookId) ?? 0) + row.seconds)
+        }
+
+        const all: Array<{ id: string; title: string }> = [
+          { id: builtIn.id, title: builtIn.title },
+          ...stored.map((item) => ({ id: item.id, title: item.title }))
+        ]
+        const books = all.map((item) => {
+          const record = progressMap[item.id]
+          return {
+            bookId: item.id,
+            title: item.title,
+            percent: record?.percent ?? 0,
+            seconds: secondsByBook.get(item.id) ?? 0,
+            lastAt: record?.updatedAt ?? 0
+          }
+        })
+
         const daysMap = new Map<string, { seconds: number; bookIds: string[] }>()
         for (const row of sessions) {
           const entry = daysMap.get(row.day) ?? { seconds: 0, bookIds: [] }
@@ -888,28 +909,22 @@ export function createLocalApi(): unknown {
           if (!entry.bookIds.includes(row.bookId)) entry.bookIds.push(row.bookId)
           daysMap.set(row.day, entry)
         }
-        const percent = progress?.percent ?? 0
+
+        const totalSeconds = books.reduce((total, item) => total + item.seconds, 0)
+        const todayRows = sessions.filter((row) => row.day === today)
         return {
-          bookCount: 1,
-          finishedCount: percent >= 0.99 ? 1 : 0,
+          bookCount: all.length,
+          finishedCount: books.filter((item) => item.percent >= 0.99).length,
           totalSeconds,
-          averageSeconds: totalSeconds,
-          books: [
-            {
-              bookId: book.id,
-              title: book.title,
-              percent,
-              seconds: totalSeconds,
-              lastAt: progress?.updatedAt ?? 0
-            }
-          ],
+          averageSeconds: all.length > 0 ? Math.round(totalSeconds / all.length) : 0,
+          books,
           days: [...daysMap.entries()].map(([day, entry]) => ({
             day,
             seconds: entry.seconds,
             bookIds: entry.bookIds
           })),
           todaySeconds: daysMap.get(today)?.seconds ?? 0,
-          todayBookId: sessions.some((row) => row.day === today) ? book.id : null,
+          todayBookId: todayRows.length > 0 ? todayRows[todayRows.length - 1].bookId : null,
           todayRemainingSeconds: null
         } as unknown as StatsPayload
       }
