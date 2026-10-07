@@ -403,6 +403,8 @@ async function downloadBaiduBooks(): Promise<SyncState> {
         transferred: done,
         total: keys.length
       })
+    }, (info) => {
+      writeSyncState({ phase: 'running', message: `正在下载 ${done + 1}/${keys.length}：${title}  ${info}` })
     }).catch(() => null)
     if (!bytes) {
       failed.push(title)
@@ -618,7 +620,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '1.6.0',
+        version: '1.6.1',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
