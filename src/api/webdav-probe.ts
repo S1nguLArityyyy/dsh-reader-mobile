@@ -111,7 +111,7 @@ export async function runWebDavProbe(
   const root = options.baseUrl.trim().replace(/\/+$/, '')
   const dirName = (options.remoteDir || 'DshReader').replace(/^\/+|\/+$/g, '')
   const dir = `${root}/${dirName}`
-  const probeDir = `${dir}/mobile-probe`
+  const probeDir = dir
   const probeFile = `${probeDir}/probe.json`
   const payload = JSON.stringify({ app: 'Dsh Reader', platform: 'android', at: new Date().toISOString() })
 
