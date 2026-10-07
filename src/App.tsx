@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { BarChart3, Library, Search, Settings as SettingsIcon, Upload } from 'lucide-react'
+import { BarChart3, Library, Settings as SettingsIcon, Upload } from 'lucide-react'
 import { useApp, type Route } from './store/app'
 import { Sidebar } from './components/Sidebar'
 import { ConflictModal, SyncStatusModal } from './components/SyncModals'
@@ -27,11 +27,10 @@ function PageBody({ route }: { route: Route }) {
  * 底部毛玻璃导航 BottomGlassTabBar
  *
  * 规格：全宽 fixed 贴底 + 顶部两角 16px 圆角 + 72px 高（底部再叠加安全区）、
- * 4 个 tab：书库 → 统计 → 设置 → 搜索（原「标签」已移除）。
+ * 3 个 tab：书库 → 统计 → 设置。
  * 毛玻璃：rgba(255,255,255,0.72) + blur(20px) + 顶部高光描边 + 微弱上浮阴影。
  *
- * 注：本地书库没有独立的搜索页，所以「搜索」是一个动作 tab —— 切到书库并把焦点打进搜索框。
- * 之前那套"横向拖动切换 tab"按新规格去掉了（它在本机 WebView 里也一直没生效）。
+ * 之前那套"横向拖动切换 tab"已按规格去掉。
  */
 function BottomGlassTabBar() {
   const route = useApp((s) => s.route)
@@ -41,17 +40,6 @@ function BottomGlassTabBar() {
     { key: 'stats', label: '统计', icon: <BarChart3 size={24} /> },
     { key: 'settings', label: '设置', icon: <SettingsIcon size={24} /> }
   ]
-
-  const openSearch = (): void => {
-    go('library')
-    // 等书库页挂载完成再聚焦（没有独立搜索页，搜索 tab 的语义就是"打开搜索框"）
-    window.setTimeout(() => {
-      const input = document.querySelector<HTMLInputElement>(
-        '.search-input, input[type="search"], .page input'
-      )
-      input?.focus()
-    }, 80)
-  }
 
   return (
     <nav className="glass-tabbar">
@@ -69,12 +57,6 @@ function BottomGlassTabBar() {
           <span className="glass-tab-label">{tab.label}</span>
         </button>
       ))}
-      <button className="glass-tab" onClick={openSearch}>
-        <span className="glass-tab-icon">
-          <Search size={24} />
-        </span>
-        <span className="glass-tab-label">搜索</span>
-      </button>
     </nav>
   )
 }
