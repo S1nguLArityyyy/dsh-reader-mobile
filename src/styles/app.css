@@ -2456,11 +2456,11 @@
     padding: 14px 14px calc(78px + env(safe-area-inset-bottom, 0px));
     -webkit-overflow-scrolling: touch;
     /*
-     * 全面屏：WebView 铺满整屏，内容自己让出状态栏。
-     * 用 max() 而不是相加 —— 相加会双重计算：本来写了 24px 基准，某些机器 env() 又不是 0，
-     * 结果标题被顶到 100px 开外（用户反馈"固定得太往下了"）。
+     * 顶部内边距**不给**：sticky 的 top:0 是相对滚动容器的内边距盒算的，
+     * 这里留多少，标题栏上方就有多高一条"没被遮住"的带子，内容会从那里穿过去（用户反馈）。
+     * 状态栏间距改由 .page-head 自己吸收（见下）。
      */
-    padding-top: calc(8px + max(env(safe-area-inset-top, 0px), 26px));
+    padding-top: 0;
   }
 
   .page-head {
@@ -2469,8 +2469,9 @@
     top: 0;
     z-index: 6;
     margin-bottom: 12px;
-    padding: 0 0 10px;
-    /* 必须**不透明**：之前用渐变淡出，滚动时下面的内容会从标题上穿过去（用户反馈） */
+    /* 自己吃掉状态栏高度：这样标题栏从 y=0 开始就是不透明底，内容只能从它下面过 */
+    padding: calc(8px + max(env(safe-area-inset-top, 0px), 26px)) 0 10px;
+    /* 必须**不透明**，且要盖住上面那条带子 */
     background: var(--bg);
   }
 
