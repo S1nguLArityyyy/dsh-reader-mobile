@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, Battery, ChevronLeft, ChevronRight, Info, List, LogOut, Palette, Search, Type, X } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Info, List, LogOut, Palette, Search, Type, X } from 'lucide-react'
 import type { ReaderTheme } from '@shared/types'
 import { bookPercent, useApp } from '../store/app'
 import { FONT_STACKS, READER_THEMES, type FontKey } from '../lib/reader-theme'
@@ -634,7 +634,37 @@ export function ReaderPage() {
         }}
       >
         <span className="rs-item">
-          <Battery size={13} />
+          {/* 电量图标：内部色块按百分比填充 —— 50% 就占一半；低于 20% 变红 */}
+          <svg
+            className="battery-icon"
+            width="24"
+            height="13"
+            viewBox="0 0 26 13"
+            aria-hidden="true"
+            style={{
+              color: battery !== null && battery < 20 ? '#d9534f' : 'inherit'
+            }}
+          >
+            <rect
+              x="0.7"
+              y="0.7"
+              width="21.6"
+              height="11.6"
+              rx="3.2"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.3"
+            />
+            <rect
+              x="2.4"
+              y="2.4"
+              width={Math.max(1.4, 18.2 * Math.max(0, Math.min(1, (battery ?? 0) / 100)))}
+              height="8.2"
+              rx="1.8"
+              fill="currentColor"
+            />
+            <rect x="23.2" y="4.4" width="2.4" height="4.2" rx="1.1" fill="currentColor" />
+          </svg>
           {battery === null ? '—' : `${battery}%`}
         </span>
         <span className="rs-item">
