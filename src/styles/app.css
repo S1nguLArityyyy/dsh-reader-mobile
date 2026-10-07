@@ -3183,7 +3183,19 @@
     overflow-y: auto;
   }
 
-  /* 面板里的进度控制行：◀ 本章进度 ▶（进度条本身仍在底部栏，避免两个元素共用 ref） */
+  /* 阅读器页眉：正文上方一行小字显示当前章节（参考图三的细行），不抢视线 */
+  .reader-runhead {
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.22);
+    color: inherit;
+    opacity: 0.5;
+    font-size: 13px;
+    letter-spacing: 0.6px;
+    text-align: center;
+  }
+
+  /* 深度列表：面板里的进度控制行（◀ 本章%/全书% ▶），进度条本体仍在底部栏 */
   .tool-seek {
     display: flex;
     align-items: center;

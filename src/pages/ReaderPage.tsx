@@ -560,6 +560,10 @@ export function ReaderPage() {
         ref={attachBody}
         onClick={handleBodyClick}
       >
+        {/* 页眉：正文上方一行小字显示当前章节（参考图三那种 ~章节名~ 的细行），随正文一起滚 */}
+        {mode === 'scroll' && !loading ? (
+          <div className="reader-runhead">{reader.chapterLabel}</div>
+        ) : null}
         {loading && !html ? (
           <div className="reader-loading">正在解析章节…</div>
         ) : mode === 'paged' ? (
