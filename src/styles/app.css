@@ -3950,3 +3950,19 @@
 .probe-body {
   padding-bottom: 24px;
 }
+/* ================= 所有弹层底部留白（含同步状态面板）=================
+   之前只给 .modal.sheet 加了留白，其它变体（.modal.center 等）的底部按钮仍会被底部导航挡住
+   （用户反馈：同步面板的「全部下载云端书籍」被挡住） */
+.modal,
+.modal.center,
+.modal.sheet {
+  max-height: calc(100dvh - 72px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.modal .modal-body {
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
