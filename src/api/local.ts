@@ -1,6 +1,17 @@
 import { unzipSync } from 'fflate'
 import { deleteBook, getBook, type StoredBook } from '../data/db'
 import { readChapterFromZip } from '../data/epub'
+import {
+  buildPayload,
+  clearDavConfig,
+  davTest,
+  readDavConfig,
+  readSyncState,
+  syncOnce,
+  writeDavConfig,
+  writeSyncState,
+  type SyncPayload
+} from '../data/sync'
 import { coverUrlOf, importEpubFile, pickEpubFiles } from '../data/import'
 import { listBooks } from '../data/db'
 import type {
@@ -299,17 +310,37 @@ function readSettings(): Settings {
   return settingsCache
 }
 
-const idleSync: SyncState = {
-  phase: 'idle',
-  loggedIn: true,
-  account: '本地模式',
-  lastSyncAt: null,
-  tasks: [],
-  transferred: 0,
-  total: 0,
-  message: '手机端本地模式：网盘同步尚未接入'
+
+/* ---------- 网盘同步：把本地进度/时长与云端合并（v1） ---------- */
+
+/** 把云端合并结果写回本地（进度取较新的、每日时长取较大值） */
+function applyPayload(payload: SyncPayload): void {
+  writeProgress(payload.progress)
+  const byKey = new Map(readSessions().map((row) => [`${row.bookId}|${row.day}`, row]))
+  for (const row of payload.sessions) {
+    const key = `${row.bookId}|${row.day}`
+    const existing = byKey.get(key)
+    if (existing) existing.seconds = Math.max(existing.seconds, row.seconds)
+    else byKey.set(key, { ...row })
+  }
+  writeSessions([...byKey.values()])
 }
 
+/** 一次同步：合并云端 → 写回云端 → 写回本地 */
+async function runSync(): Promise<SyncState> {
+  const config = readDavConfig()
+  if (!config) return writeSyncState({ message: '请先在设置里配置 WebDAV' })
+  writeSyncState({ message: '同步中…' })
+  const payload = buildPayload(readProgress(), readSessions())
+  const result = await syncOnce(config, payload)
+  if (result.ok && result.merged) applyPayload(result.merged)
+  return writeSyncState({
+    loggedIn: result.ok,
+    account: config.username,
+    lastSyncAt: result.ok ? Date.now() : readSyncState().lastSyncAt,
+    message: result.message
+  })
+}
 /* ---------- 被"删除"的书：内置示例书在 APK 里删不掉，记一个隐藏标记 ---------- */
 const HIDDEN_KEY = 'dsh.hiddenBooks'
 
@@ -473,7 +504,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '1.0.1',
+        version: '1.1.0',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -716,15 +747,30 @@ export function createLocalApi(): unknown {
     },
 
     sync: {
-      status: async () => idleSync,
-      connect: async () => idleSync,
-      run: async () => idleSync,
-      cancel: async () => idleSync,
-      downloadAll: async () => idleSync,
+      status: async () => readSyncState(),
+      connect: async () => {
+        const config = readDavConfig()
+        if (!config) return writeSyncState({ message: '请先填写 WebDAV 地址与账号' })
+        const result = await davTest(config)
+        return writeSyncState({
+          loggedIn: result.ok,
+          account: result.ok ? config.username : null,
+          message: result.message
+        })
+      },
+      run: () => runSync(),
+      cancel: async () => writeSyncState({ message: '已取消' }),
+      downloadAll: () => runSync(),
       conflicts: async () => [],
-      resolve: async () => idleSync,
-      configureWebdav: async () => idleSync,
-      logout: async () => idleSync,
+      resolve: async () => readSyncState(),
+      configureWebdav: async (payload: { url: string; username: string; password: string }) => {
+        writeDavConfig({ url: payload.url, username: payload.username, password: payload.password })
+        return writeSyncState({ account: payload.username, message: '已保存连接信息' })
+      },
+      logout: async () => {
+        clearDavConfig()
+        return readSyncState()
+      },
       afterReading: async () => undefined,
       onChanged: () => () => undefined
     }
