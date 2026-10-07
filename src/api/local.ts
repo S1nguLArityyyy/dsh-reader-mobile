@@ -444,7 +444,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '0.9.20',
+        version: '1.0.0',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -534,7 +534,28 @@ export function createLocalApi(): unknown {
       },
       // 下面两个宿主接口（导出/清理缓存）手机端用不到，但 store 初始化时会调用，给个空实现
       ensureExtracted: async () => '',
-      clearCache: async () => undefined
+      clearCache: async () => {
+        // 恢复出厂设置：清空本机书籍（IndexedDB）+ 进度/设置/隐藏标记（localStorage）+ 内存缓存
+        try {
+          for (const item of await listBooks()) await deleteBook(item.id)
+        } catch {
+          /* IndexedDB 不可用就跳过 */
+        }
+        try {
+          for (const key of [PROGRESS_KEY, SESSIONS_KEY, SETTINGS_KEY, 'dsh.hiddenBooks', 'dsh.demoSeeded']) {
+            localStorage.removeItem(key)
+          }
+        } catch {
+          /* 忽略 */
+        }
+        for (const url of urlCache.values()) URL.revokeObjectURL(url)
+        urlCache.clear()
+        zipCache.clear()
+        for (const key of Object.keys(memoryProgress)) delete memoryProgress[key]
+        memorySessions.length = 0
+        settingsCache = null
+        cache = null
+      },
     },
 
     reader: {

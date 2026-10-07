@@ -67,6 +67,32 @@ export function SettingsPage() {
       </div>
 
       <div className="settings-wrap">
+        {/* ---------- 数据 ---------- */}
+        <section className="setting-card">
+          <h3>
+            <HardDrive size={15} style={{ verticalAlign: -2, marginRight: 6 }} />
+            数据
+          </h3>
+          <div className="setting-row">
+            <div>
+              <div className="setting-label">恢复出厂设置</div>
+              <div className="setting-hint">清空本机的书籍、阅读进度与设置（网盘上的数据不受影响）</div>
+            </div>
+            <button
+              className="btn btn-ghost"
+              onClick={() => {
+                const ok = window.confirm('确定恢复出厂设置吗？本机导入的书籍与阅读进度都会被清空，且无法撤销。')
+                if (!ok) return
+                // clearCache 只在手机端实现里存在，公共类型没声明它 —— 这里局部断言，避免改公共类型
+                const api = window.api.library as unknown as { clearCache: () => Promise<void> }
+                void api.clearCache().then(() => window.location.reload())
+              }}
+            >
+              恢复出厂
+            </button>
+          </div>
+        </section>
+
         {/* ---------- 外观 ---------- */}
         <section className="setting-card">
           <h3>
