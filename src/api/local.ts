@@ -433,7 +433,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '0.9.16',
+        version: '0.9.17',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -493,7 +493,9 @@ export function createLocalApi(): unknown {
           /* IndexedDB 不可用就只显示内置书 */
         }
         const hidden = readHidden()
-        return [...stored, builtIn].filter((book) => !hidden.includes(book.id))
+        // 内置示例书已经不再打包；万一有，也尊重"隐藏"标记
+        const list = builtIn.title ? [...stored, builtIn] : [...stored]
+        return list.filter((book) => !hidden.includes(book.id))
       },
       importDialog: () => importFiles(),
       importFolderDialog: () => importFiles(),
