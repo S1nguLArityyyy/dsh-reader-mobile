@@ -445,6 +445,9 @@ async function downloadLanBooks(): Promise<SyncState> {
       transferred: done,
       total: listed.books.length
     })
+    // ★ 下载前先按内容指纹跳过 ★（电脑端已经在 books.json 里报了 hash ✓）
+    //    此前要先下整本、算完 sha1 才知道有没有 ✗ 所以"跳过"也要跑一遍完整下载 ✓ 很慢 ✓
+    if (item.hash && have.has(`sha1:${item.hash}`)) continue
     const bytes = await fetchLanBook(base, item.name)
     if (!bytes) {
       failed.push(title)
@@ -795,7 +798,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.1.3',
+        version: '2.1.4',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',

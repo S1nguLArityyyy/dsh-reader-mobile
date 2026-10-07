@@ -14,6 +14,8 @@ import { CapacitorHttp } from '@capacitor/core'
 export interface LanBook {
   name: string
   size: number
+  /** 电脑端给出的内容指纹 ✓ 手机端下载【之前】就能跳过已有书 ✓ */
+  hash?: string | null
   /** 电脑端算好的封面主色 ✓ 手机端直接沿用 ✓ */
   color?: string | null
 }
@@ -55,7 +57,8 @@ export async function listLanBooks(base: string): Promise<{ ok: boolean; books: 
       .map((item) => ({
         name: String(item.name ?? ''),
         size: Number(item.size ?? 0),
-        color: typeof item.color === 'string' && item.color ? item.color : null
+        color: typeof item.color === 'string' && item.color ? item.color : null,
+        hash: typeof item.hash === 'string' && item.hash ? item.hash : null
       }))
       .filter((item) => item.name.length > 0)
     return { ok: true, books, message: `电脑上有 ${books.length} 本书` }
