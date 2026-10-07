@@ -1,4 +1,4 @@
-import { fetchLanBook, fetchLanRecords, listLanBooks } from '../data/lan'
+import { fetchLanBook, fetchLanRecords, listLanBooks, pushLanRecords } from '../data/lan'
 import { writeJson as baiduWriteJson, AUTH_URL as baiduAuthUrl, accessToken as baiduToken, diagnose as baiduOpenDiagnose, readFile as baiduOpenReadFile, readJson as baiduOpenReadJson } from '../data/baidu-open'
 import { unzipSync } from 'fflate'
 import { deleteBook, getBook, listBooks, putBook, type StoredBook } from '../data/db'
@@ -812,7 +812,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.2.0',
+        version: '2.2.1',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -1084,8 +1084,14 @@ export function createLocalApi(): unknown {
       recordsOnly: async () => {
         const provider = readSettings().sync.provider
         if (provider === 'lan') {
+          // 先把自己的记录推给电脑（只合并不删除），再把电脑的拉回来合并
+          const pushed = await pushLanRecords(String(readSettings().sync.localCloudDir ?? ''), {
+            progress: readProgress() as unknown as Record<string, unknown>,
+            sessions: readSessions() as unknown as Array<Record<string, unknown>>
+          }).catch(() => ({ ok: false, message: '' }))
           const result = await syncLanRecords()
-          return writeSyncState({ phase: 'idle', message: result.message, lastSyncAt: Date.now() })
+          const pushNote = pushed.ok ? pushed.message + '｜' : ''
+          return writeSyncState({ phase: 'idle', message: pushNote + result.message, lastSyncAt: Date.now() })
         }
         if (provider === 'baidu') return uploadRecordsBaidu()
         return writeSyncState({ message: '当前云端类型不支持同步阅读记录' })

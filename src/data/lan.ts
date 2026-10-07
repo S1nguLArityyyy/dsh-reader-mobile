@@ -124,3 +124,29 @@ export async function fetchLanRecords(base: string): Promise<{
     return { ok: false, progress: {}, sessions: [], message: `连不上电脑：${error instanceof Error ? error.message : String(error)}` }
   }
 }
+
+/** 把本机阅读记录推给电脑（POST /records，只合并不删除） */
+export async function pushLanRecords(
+  base: string,
+  payload: { progress: Record<string, unknown>; sessions: Array<Record<string, unknown>> }
+): Promise<{ ok: boolean; message: string }> {
+  const root = normalizeBase(base)
+  if (!root) return { ok: false, message: '请先填电脑的局域网地址' }
+  try {
+    const response = await CapacitorHttp.request({
+      url: `${root}/records`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: JSON.stringify(payload),
+      connectTimeout: 8000,
+      readTimeout: 30000
+    })
+    const body = asRecord(response.data)
+    if (response.status !== 200 || body.ok !== true) {
+      return { ok: false, message: `电脑端返回 HTTP ${response.status}` }
+    }
+    return { ok: true, message: `已推给电脑：进度 +${String(body.progressMerged ?? 0)} · 时长 +${String(body.sessionsMerged ?? 0)}` }
+  } catch (error) {
+    return { ok: false, message: `连不上电脑：${error instanceof Error ? error.message : String(error)}` }
+  }
+}
