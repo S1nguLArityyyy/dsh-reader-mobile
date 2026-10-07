@@ -44,6 +44,7 @@ export function LibraryPage() {
   const importFolderDialog = useApp((s) => s.importFolderDialog)
   const openReader = useApp((s) => s.openReader)
   const openDetail = useApp((s) => s.openDetail)
+  const refreshAll = useApp((s) => s.refreshAll)
   const removeBook = useApp((s) => s.removeBook)
   const updateBook = useApp((s) => s.updateBook)
   const saveSettings = useApp((s) => s.saveSettings)
@@ -293,7 +294,7 @@ export function LibraryPage() {
             <button
             className="icon-btn"
             title="只同步阅读记录（不下载书）"
-            onClick={() => void (window.api as unknown as { sync: { recordsOnly: () => Promise<unknown> } }).sync.recordsOnly()}
+            onClick={() => void (window.api as unknown as { sync: { recordsOnly: () => Promise<unknown> } }).sync.recordsOnly().then(() => refreshAll())}
           >
               <RefreshCw size={19} />
           </button>
