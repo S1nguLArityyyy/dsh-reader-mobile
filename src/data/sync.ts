@@ -123,13 +123,22 @@ async function request(
   return { status: response.status, body }
 }
 
-/** 连接测试：对目录做一次 PROPFIND */
+/**
+ * 连接测试。
+ *
+ * **不能用 PROPFIND**：Capacitor 的原生 HTTP 桥只允许
+ * OPTIONS/GET/HEAD/POST/PUT/DELETE/TRACE/PATCH —— 发 PROPFIND 或 MKCOL 会被桥直接拒绝
+ * （报 "Expected one of [...] but was PROPFIND"，实测过）。
+ * 所以这里用 GET 同步文件代替：404 = 目录可达但还没同步过；200 = 已有同步文件。
+ */
 export async function davTest(config: DavConfig): Promise<{ ok: boolean; message: string }> {
   try {
-    const { status } = await request('PROPFIND', normalize(config.url), config)
-    if (status === 207 || status === 200) return { ok: true, message: '连接成功' }
-    if (status === 401) return { ok: false, message: '账号或应用密码不正确' }
-    if (status === 404) return { ok: false, message: '路径不存在，检查 URL 是否指向同步目录' }
+    const { status } = await request('GET', fileUrl(config), config)
+    if (status === 200) return { ok: true, message: '连接成功（云端已有同步文件）' }
+    if (status === 404) return { ok: true, message: '连接成功（目录可达，还没有同步文件）' }
+    if (status === 401 || status === 403)
+      return { ok: false, message: '认证失败：账号要填完整邮箱，密码要用「应用密码」而不是登录密码' }
+    if (status === 409) return { ok: false, message: '上级目录不存在：请先在网盘里建好这个文件夹' }
     return { ok: false, message: `服务器返回 ${status}` }
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : String(error) }
@@ -146,7 +155,11 @@ async function davRead(config: DavConfig): Promise<SyncPayload | null> {
 
 async function davWrite(config: DavConfig, payload: SyncPayload): Promise<void> {
   const { status } = await request('PUT', fileUrl(config), config, JSON.stringify(payload))
-  if (status < 200 || status >= 300) throw new Error(`写入云端失败：HTTP ${status}`)
+  if (status < 200 || status >= 300) {
+    if (status === 401 || status === 403) throw new Error('上传被拒（401/403）：检查账号与应用密码')
+    if (status === 409) throw new Error('上传失败（409）：同步目录不存在，请先在网盘里新建文件夹')
+    throw new Error(`写入云端失败：HTTP ${status}`)
+  }
 }
 
 /* ---------------- 合并 ---------------- */
