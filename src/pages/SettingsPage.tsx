@@ -212,6 +212,11 @@ export function SettingsPage() {
             </div>
             <div className="setting-control">
               <span className={`sync-dot${sync.loggedIn ? ' on' : ''}`} />
+              {syncSettings.provider === 'baidu' && sync.loggedIn ? (
+                <button className='btn btn-ghost btn-sm' onClick={() => void logoutSync()}>
+                  退出登录
+                </button>
+              ) : null}
               {syncSettings.provider === 'webdav' ? (
                 <button className="btn btn-ghost btn-sm" onClick={() => void logoutSync()}>
                   退出登录

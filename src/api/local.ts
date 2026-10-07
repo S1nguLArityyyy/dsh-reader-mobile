@@ -1,5 +1,10 @@
 import { unzipSync } from 'fflate'
-import { connect as baiduConnect } from '../data/baidu'
+import {
+  connect as baiduConnect,
+  readFile as baiduReadFile,
+  readJson as baiduReadJson,
+  readSession
+} from '../data/baidu'
 import { deleteBook, getBook, type StoredBook } from '../data/db'
 import { readChapterFromZip } from '../data/epub'
 import {
@@ -357,6 +362,51 @@ async function downloadCloudBooks(): Promise<SyncState> {
     total: keys.length
   })
 }
+/** 「全部下载云端书籍」（百度网盘版）：manifest.json 取清单 → 逐本下载 → 解析入库 */
+async function downloadBaiduBooks(): Promise<SyncState> {
+  const settings = readSettings()
+  const remote = '/' + String(settings.sync.remoteDir || 'DshReader').replace(/^\/+|\/+$/g, '')
+  const session = readSession()
+  if (!session) return writeSyncState({ message: '请先点「连接」登录百度网盘' })
+  const manifest = await baiduReadJson(`${remote}/manifest.json`)
+  const files = ((manifest?.files ?? {}) as Record<string, { title?: string; size?: number }>) || {}
+  const keys = Object.keys(files)
+  if (keys.length === 0) {
+    return writeSyncState({ message: '云端还没有书籍：先在电脑端点「上传书籍」' })
+  }
+  const have = new Set((await listBooks()).map((item) => item.id))
+  let done = 0
+  const failed: string[] = []
+  for (const key of keys) {
+    const id = key.startsWith('sha1:') ? key : `sha1:${key}`
+    const title = files[key]?.title ?? key.slice(0, 12)
+    if (have.has(id)) continue
+    writeSyncState({
+      message: `正在下载 ${done + 1}/${keys.length}：${title}`,
+      transferred: done,
+      total: keys.length
+    })
+    const bytes = await baiduReadFile(`${remote}/books/${encodeURIComponent(key)}.epub`).catch(() => null)
+    if (!bytes) {
+      failed.push(title)
+      continue
+    }
+    const result = await importEpubBytes(bytes, `${title}.epub`, id)
+    if (result.book) done += 1
+    else failed.push(`${title}（${result.error ?? '解析失败'}）`)
+  }
+  return writeSyncState({
+    message:
+      failed.length > 0
+        ? `已下载 ${done} 本，失败 ${failed.length} 本：${failed.slice(0, 3).join('、')}`
+        : `已下载 ${done} 本`,
+    loggedIn: true,
+    account: `百度网盘 · ${session.uk}`,
+    lastSyncAt: Date.now(),
+    transferred: done,
+    total: keys.length
+  })
+}
 /* ---------- 网盘同步：把本地进度/时长与云端合并（v1） ---------- */
 
 /** 把云端合并结果写回本地（进度取较新的、每日时长取较大值） */
@@ -550,7 +600,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '1.3.3',
+        version: '1.3.4',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -815,7 +865,8 @@ export function createLocalApi(): unknown {
       },
       run: () => runSync(),
       cancel: async () => writeSyncState({ message: '已取消' }),
-      downloadAll: () => downloadCloudBooks(),
+      downloadAll: () =>
+          readSettings().sync.provider === 'baidu' ? downloadBaiduBooks() : downloadCloudBooks(),
       conflicts: async () => [],
       resolve: async () => readSyncState(),
       configureWebdav: async (payload: { url: string; username: string; password: string }) => {
