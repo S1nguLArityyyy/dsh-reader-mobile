@@ -32,12 +32,18 @@ export interface SyncPayload {
 
 /* ---------------- 配置与状态 ---------------- */
 
+/** 配置不完整（缺密码）时也算"没配置好"，避免发出空密码请求换来一个看不懂的 401 */
 export function readDavConfig(): DavConfig | null {
   try {
     const raw = localStorage.getItem(CONFIG_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as DavConfig
-    return parsed.url ? parsed : null
+    if (!parsed.url) return null
+    return {
+      url: parsed.url.trim(),
+      username: (parsed.username ?? '').trim(),
+      password: (parsed.password ?? '').trim()
+    }
   } catch {
     return null
   }
@@ -45,7 +51,13 @@ export function readDavConfig(): DavConfig | null {
 
 export function writeDavConfig(config: DavConfig): void {
   try {
-    localStorage.setItem(CONFIG_KEY, JSON.stringify(config))
+    // 复制粘贴很容易带上首尾空格/换行 —— 统一清掉（这会让认证莫名失败）
+    const clean: DavConfig = {
+      url: config.url.trim(),
+      username: config.username.trim(),
+      password: config.password.trim()
+    }
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(clean))
   } catch {
     /* 忽略 */
   }
@@ -156,7 +168,7 @@ async function davRead(config: DavConfig): Promise<SyncPayload | null> {
 async function davWrite(config: DavConfig, payload: SyncPayload): Promise<void> {
   const { status } = await request('PUT', fileUrl(config), config, JSON.stringify(payload))
   if (status < 200 || status >= 300) {
-    if (status === 401 || status === 403) throw new Error('上传被拒（401/403）：检查账号与应用密码')
+    if (status === 401 || status === 403) throw new Error('云端认证失败（401/403）：请到 设置→同步 填好应用密码后点「保存并连接」（只点「连接」不会保存密码）')
     if (status === 409) throw new Error('上传失败（409）：同步目录不存在，请先在网盘里新建文件夹')
     throw new Error(`写入云端失败：HTTP ${status}`)
   }

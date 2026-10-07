@@ -329,7 +329,7 @@ function applyPayload(payload: SyncPayload): void {
 /** 一次同步：合并云端 → 写回云端 → 写回本地 */
 async function runSync(): Promise<SyncState> {
   const config = readDavConfig()
-  if (!config) return writeSyncState({ message: '请先在设置里配置 WebDAV' })
+  if (!config) return writeSyncState({ message: '还没配置好：请到 设置→同步 填地址/账号/应用密码，然后点「保存并连接」' })
   writeSyncState({ message: '同步中…' })
   const payload = buildPayload(readProgress(), readSessions())
   const result = await syncOnce(config, payload)
@@ -504,7 +504,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '1.1.4',
+        version: '1.1.5',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
