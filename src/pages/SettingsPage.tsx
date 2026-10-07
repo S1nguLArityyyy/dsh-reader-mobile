@@ -1,11 +1,7 @@
 import { useState } from 'react'
 import { exchangeCode as baiduExchangeCode } from '../data/baidu-open'
 import {
-  AlertTriangle,
   Cloud,
-  Eye,
-  FileDown,
-  FileUp,
   FolderOpen,
   HardDrive,
   Image as ImageIcon,
@@ -25,11 +21,9 @@ export function SettingsPage() {
   const sync = useApp((s) => s.sync)
   const saveSettings = useApp((s) => s.saveSettings)
   const setSyncModal = useApp((s) => s.setSyncModal)
-  const previewConflicts = useApp((s) => s.previewConflicts)
   const connectSync = useApp((s) => s.connectSync)
   const configureWebdav = useApp((s) => s.configureWebdav)
   const logoutSync = useApp((s) => s.logoutSync)
-  const markAllSyncUpload = useApp((s) => s.markAllSyncUpload)
   const toast = useApp((s) => s.toast)
 
   const [nameDraft, setNameDraft] = useState<string | null>(null)
@@ -473,22 +467,6 @@ export function SettingsPage() {
             </div>
           </div>
 
-          <div className="setting-row">
-            <div>
-              <div className="setting-label">批量标记</div>
-              <div className="setting-desc">
-                一次把书库里所有书标成「同步到云端」或取消（只改本机标记，不动云端已有的文件）
-              </div>
-            </div>
-            <div className="setting-control">
-              <button className="btn btn-ghost btn-sm" onClick={() => void markAllSyncUpload(true)}>
-                全部标记
-              </button>
-              <button className="btn btn-ghost btn-sm" onClick={() => void markAllSyncUpload(false)}>
-                全部取消
-              </button>
-            </div>
-          </div>
 
           <div className="setting-row">
             <div>
@@ -503,28 +481,6 @@ export function SettingsPage() {
             </div>
           </div>
 
-          <div className="setting-row">
-            <div>
-              <div className="setting-label">手动导出 / 导入</div>
-              <div className="setting-desc">网盘不可用时的兜底通道：把进度文件导出或导入</div>
-            </div>
-            <div className="setting-control">
-              <button
-                className="btn btn-ghost btn-sm"
-                onClick={() => toast('info', '导出/导入进度文件尚未接入')}
-              >
-                <FileDown size={14} />
-                导出
-              </button>
-              <button
-                className="btn btn-ghost btn-sm"
-                onClick={() => toast('info', '导出/导入进度文件尚未接入')}
-              >
-                <FileUp size={14} />
-                导入
-              </button>
-            </div>
-          </div>
         </section>
 
         {/* ---------- 数据与存储 ---------- */}
@@ -606,40 +562,6 @@ export function SettingsPage() {
         </section>
 
         {/* ---------- 设计阶段预览入口 ---------- */}
-        <section className="setting-card">
-          <h3>
-            <Eye size={15} style={{ verticalAlign: -2, marginRight: 6 }} />
-            界面预览（设计阶段临时入口）
-          </h3>
-          <div className="setting-hint">
-            同步引擎已接入（本地文件夹模式）。下面两个入口用于单独预览同步弹窗的界面。
-          </div>
-          <div className="setting-row">
-            <div>
-              <div className="setting-label">同步状态弹窗</div>
-              <div className="setting-desc">任务计数 · 进度条 · 上次同步时间 · 立即同步 / 取消同步 / 全部下载</div>
-            </div>
-            <div className="setting-control">
-              <button className="btn btn-ghost btn-sm" onClick={() => setSyncModal(true)}>
-                预览
-              </button>
-            </div>
-          </div>
-          <div className="setting-row">
-            <div>
-              <div className="setting-label">进度冲突弹窗</div>
-              <div className="setting-desc">
-                <AlertTriangle size={12} style={{ verticalAlign: -2, marginRight: 4 }} />
-                使用两本示例书籍展示「覆盖云端 / 覆盖本地」的选择交互
-              </div>
-            </div>
-            <div className="setting-control">
-              <button className="btn btn-ghost btn-sm" onClick={previewConflicts}>
-                预览
-              </button>
-            </div>
-          </div>
-        </section>
 
         {/* ---------- 数据 ---------- */}
         <section className="setting-card">
