@@ -33,7 +33,15 @@ export interface SyncPayload {
 /* ---------------- 配置与状态 ---------------- */
 
 /** 配置不完整（缺密码）时也算"没配置好"，避免发出空密码请求换来一个看不懂的 401 */
+/**
+ * 内存兜底：安卓 WebView 上 localStorage 可能不可用或被清掉，
+ * 只写 localStorage 的话「保存并连接」会**静默失效** —— 表现就是"填了密码、还是提示要配置 WebDAV"。
+ */
+let memoryConfig: DavConfig | null = null
+let memoryState: SyncState | null = null
+
 export function readDavConfig(): DavConfig | null {
+  if (memoryConfig) return memoryConfig
   try {
     const raw = localStorage.getItem(CONFIG_KEY)
     if (!raw) return null
@@ -50,6 +58,12 @@ export function readDavConfig(): DavConfig | null {
 }
 
 export function writeDavConfig(config: DavConfig): void {
+  const cleanAll: DavConfig = {
+    url: config.url.trim(),
+    username: config.username.trim(),
+    password: config.password.trim()
+  }
+  memoryConfig = cleanAll
   try {
     // 复制粘贴很容易带上首尾空格/换行 —— 统一清掉（这会让认证莫名失败）
     const clean: DavConfig = {
@@ -57,13 +71,16 @@ export function writeDavConfig(config: DavConfig): void {
       username: config.username.trim(),
       password: config.password.trim()
     }
+    memoryConfig = clean
     localStorage.setItem(CONFIG_KEY, JSON.stringify(clean))
   } catch {
-    /* 忽略 */
+    /* localStorage 不可用也没关系：内存里已经有一份 */
   }
 }
 
 export function clearDavConfig(): void {
+  memoryConfig = null
+  memoryState = null
   try {
     localStorage.removeItem(CONFIG_KEY)
     localStorage.removeItem(STATE_KEY)
@@ -73,6 +90,7 @@ export function clearDavConfig(): void {
 }
 
 export function readSyncState(): SyncState {
+  if (memoryState) return memoryState
   const base: SyncState = {
     phase: 'idle',
     loggedIn: false,
@@ -94,10 +112,11 @@ export function readSyncState(): SyncState {
 
 export function writeSyncState(patch: Partial<SyncState>): SyncState {
   const next = { ...readSyncState(), ...patch }
+  memoryState = next
   try {
     localStorage.setItem(STATE_KEY, JSON.stringify(next))
   } catch {
-    /* 忽略 */
+    /* 内存里有一份 */
   }
   return next
 }
