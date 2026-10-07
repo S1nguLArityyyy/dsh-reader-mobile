@@ -365,14 +365,21 @@ export function ReaderPage() {
     [mode, panel, turn]
   )
 
-  /* ---------- 底部进度条：拖动定位（章内） ---------- */
-  const barRef = useRef<HTMLDivElement>(null)
+  /* ---------- 进度条拖动定位（章内） ----------
+     进度条元素由**调用方传入**：以前共用 barRef，底部条和面板里的条会互相抢 ref，
+     拖动时按错误的矩形算位置（所以这里改成从被拖的元素自身取矩形）。 */
+  const lastHapticRef = useRef(-1)
   const dragSeek = useCallback(
-    (clientX: number) => {
-      const el = barRef.current
-      if (!el) return
-      const rect = el.getBoundingClientRect()
+    (bar: HTMLElement | null, clientX: number) => {
+      if (!bar) return
+      const rect = bar.getBoundingClientRect()
       const value = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
+      // 震动反馈：每跨过 1% 震一下（不能每个 move 都震，否则是持续嗡嗡）
+      const step = Math.round(value * 100)
+      if (step !== lastHapticRef.current) {
+        lastHapticRef.current = step
+        navigator.vibrate?.(8)
+      }
       if (mode === 'paged') {
         const target = Math.min(Math.max(0, pages - 1), Math.round(value * Math.max(0, pages - 1)))
         setPage(target)
@@ -398,10 +405,10 @@ export function ReaderPage() {
       e.preventDefault()
       // 手机上**没有鼠标**：只挂 onMouseDown 的话手指根本拖不动进度条（用户反馈过），
       // 必须用 Pointer Events（鼠标 / 触摸 / 触控笔通用）。
-      dragSeek(e.clientX)
-      const target = e.currentTarget as HTMLElement
-      target.setPointerCapture?.(e.pointerId)
-      const onMove = (ev: PointerEvent): void => dragSeek(ev.clientX)
+      const bar = e.currentTarget as HTMLElement
+      dragSeek(bar, e.clientX)
+      bar.setPointerCapture?.(e.pointerId)
+      const onMove = (ev: PointerEvent): void => dragSeek(bar, ev.clientX)
       const onUp = (): void => {
         window.removeEventListener('pointermove', onMove)
         window.removeEventListener('pointerup', onUp)
@@ -500,6 +507,25 @@ export function ReaderPage() {
     </div>
   )
 
+  /* ---------- 一级界面底部状态条：电量 · 页数/总章 · 百分比 · 时间 ---------- */
+  const [clock, setClock] = useState('')
+  const [battery, setBattery] = useState<number | null>(null)
+  useEffect(() => {
+    const tick = (): void => {
+      const now = new Date()
+      setClock(`${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`)
+    }
+    tick()
+    const timer = window.setInterval(tick, 20000)
+    // 电量：Chromium / 安卓 WebView 支持 Battery Status API
+    const nav = navigator as Navigator & { getBattery?: () => Promise<{ level: number }> }
+    void nav
+      .getBattery?.()
+      .then((info) => setBattery(Math.round(info.level * 100)))
+      .catch(() => setBattery(null))
+    return () => window.clearInterval(timer)
+  }, [])
+
   return (
     <div className="reader" style={readerStyle}>
       <div
@@ -575,37 +601,19 @@ export function ReaderPage() {
         )}
       </div>
 
+      {/* 一级界面：最下方只留一条状态（电量 · 页数/总章 · 百分比 · 时间），点它唤出二级菜单 */}
       <div
-        className="reader-foot"
+        className="reader-foot reader-status"
         onClick={(e) => {
-          const el = e.target as HTMLElement
-          // 点按钮或进度条本身不收起面板；点空白处则唤出/收起「阅读工具」
-          if (el.closest('button') || el.closest('.reader-progress')) return
+          if ((e.target as HTMLElement).closest('button')) return
           setPanel(panel === 'none' ? 'tools' : 'none')
         }}
       >
-        <button className="icon-btn sm" onClick={() => turn(-1)} title="上一页">
-          <ChevronLeft size={17} />
-        </button>
-        <span className="reader-foot-pct">本章 {percentText(chapterRatio)}%</span>
-        <div
-          className="reader-progress"
-          ref={barRef}
-          onPointerDown={onBarPointerDown}
-          title="按住拖动可快速定位"
-        >
-          <i style={{ width: `${percentText(chapterRatio)}%` }} />
-          <span className="reader-progress-knob" style={{ left: `${percentText(chapterRatio)}%` }} />
-        </div>
-        <span className="reader-foot-pct whole">全书 {percentText(totalPercent)}%</span>
-        {mode === 'paged' ? (
-          <span className="reader-hint">
-            {'ontouchstart' in window ? '左右滑动或点击两侧翻页' : '点击两侧或滚动滚轮翻页'}
-          </span>
-        ) : null}
-        <button className="icon-btn sm" onClick={() => turn(1)} title="下一页">
-          <ChevronRight size={17} />
-        </button>
+        <span className="rs-item">{battery === null ? '—' : `${battery}%`}</span>
+        <span className="rs-item">
+          {chapterIndex + 1}/{chapters.length} · {percentText(totalPercent)}%
+        </span>
+        <span className="rs-item">{clock}</span>
       </div>
 
       {panel === 'tools' ? (
@@ -617,19 +625,35 @@ export function ReaderPage() {
             </button>
           </div>
           <div className="reader-panel-body">
-            {/* 进度控制行（参考图里面板顶部那一行：本页进度 + 左右微调） */}
+            {/* 第一行：取消 / 退出 */}
+            <div className="tool-row">
+              <button className="tool-btn" onClick={() => setPanel('none')}>
+                取消
+              </button>
+              <button className="tool-btn" onClick={closeReader}>
+                退出
+              </button>
+            </div>
+
+            {/* 第二行：可拖动的进度条（拖动时每 1% 震动一次） */}
             <div className="tool-seek">
               <button className="icon-btn sm" onClick={() => turn(-1)} title="上一页">
                 ◀
               </button>
-              <div className="tool-seek-mid">
-                <span className="tool-seek-pct">本章 {percentText(chapterRatio)}%</span>
-                <span className="tool-seek-sub">全书 {percentText(totalPercent)}%</span>
+              <div
+                className="reader-progress"
+                onPointerDown={onBarPointerDown}
+                title="长按后左右微调"
+              >
+                <i style={{ width: `${percentText(chapterRatio)}%` }} />
+                <span className="reader-progress-knob" style={{ left: `${percentText(chapterRatio)}%` }} />
               </div>
               <button className="icon-btn sm" onClick={() => turn(1)} title="下一页">
                 ▶
               </button>
             </div>
+            <div className="tool-seek-hint">长按后左右微调</div>
+
             <div className="tool-grid">
               <button className="tool-btn" onClick={() => setPanel('toc')}>
                 目录
