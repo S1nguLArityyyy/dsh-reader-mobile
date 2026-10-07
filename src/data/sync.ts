@@ -273,3 +273,57 @@ export async function syncOnce(
     }
   }
 }
+
+/* ---------------- 书籍文件（二进制） ---------------- */
+
+/** 与桌面端的命名规则一致（已在服务器上核对）：sha1:abc… → sha1%3Aabc….epub */
+export function cloudBookName(key: string): string {
+  return `${encodeURIComponent(key)}.epub`
+}
+
+async function requestBinary(url: string, config: DavConfig): Promise<Uint8Array | null> {
+  const response = await CapacitorHttp.request({
+    url,
+    method: 'GET',
+    headers: { Authorization: `Basic ${btoa(`${config.username}:${config.password}`)}` },
+    responseType: 'arraybuffer',
+    connectTimeout: 15000,
+    readTimeout: 180000
+  })
+  if (response.status !== 200) return null
+  const data = response.data as unknown
+  if (data instanceof ArrayBuffer) return new Uint8Array(data)
+  if (typeof data === 'string') {
+    // 安卓端 responseType=arraybuffer 会以 base64 字符串回来
+    const bin = atob(data)
+    const out = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i)
+    return out
+  }
+  return null
+}
+
+/** 云端书籍清单：manifest.json 的 files 段（key → 标题/作者/大小） */
+export async function davReadManifest(
+  config: DavConfig
+): Promise<Record<string, { title?: string; author?: string; size?: number }>> {
+  try {
+    const { status, body } = await request('GET', `${normalize(config.url)}/manifest.json`, config)
+    if (status !== 200 || !body.trim()) return {}
+    const parsed = JSON.parse(body) as {
+      files?: Record<string, { title?: string; author?: string; size?: number }>
+    }
+    return parsed.files ?? {}
+  } catch {
+    return {}
+  }
+}
+
+/** 下载一本书的原始 EPUB 字节 */
+export async function davReadBook(config: DavConfig, key: string): Promise<Uint8Array | null> {
+  try {
+    return await requestBinary(`${normalize(config.url)}/books/${cloudBookName(key)}`, config)
+  } catch {
+    return null
+  }
+}

@@ -82,3 +82,45 @@ export async function importEpubFile(file: File): Promise<ImportResult> {
 export function coverUrlOf(book: StoredBook): string | null {
   return book.cover ? URL.createObjectURL(book.cover) : null
 }
+
+/** 从字节导入（同步下载云端书籍时用；和"选文件导入"走同一条入库路径） */
+export async function importEpubBytes(
+  bytes: Uint8Array,
+  fileName: string,
+  forcedId?: string
+): Promise<ImportResult> {
+  try {
+    const copy = bytes.slice()
+    const buf = copy.buffer as ArrayBuffer
+    const id = forcedId ?? `sha1:${await sha1Hex(bytes)}`
+    const meta = await readEpubMetaFromBytes(bytes)
+    const files = unzipSync(bytes)
+    let wordCount = 0
+    for (const href of meta.chapterHrefs) {
+      const key = meta.opfDir ? `${meta.opfDir}/${href}` : href
+      const entry = files[key]
+      if (entry) wordCount += countWords(new TextDecoder().decode(entry))
+    }
+    const record: StoredBook = {
+      id,
+      title: meta.title || fileName.replace(/\.epub$/i, ''),
+      author: meta.author,
+      description: meta.description,
+      fileName,
+      fileSize: bytes.byteLength,
+      cover: meta.coverData ? new Blob([meta.coverData as unknown as BlobPart]) : null,
+      coverExt: meta.coverExt,
+      epub: buf,
+      chapterHrefs: meta.chapterHrefs,
+      opfPath: meta.opfPath,
+      opfDir: meta.opfDir,
+      toc: meta.toc,
+      wordCount,
+      addedAt: Date.now()
+    }
+    await putBook(record)
+    return { book: record, error: null }
+  } catch (error) {
+    return { book: null, error: error instanceof Error ? error.message : String(error) }
+  }
+}

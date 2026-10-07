@@ -6,13 +6,15 @@ import {
   clearDavConfig,
   davTest,
   readDavConfig,
+  davReadBook,
+  davReadManifest,
   readSyncState,
   syncOnce,
   writeDavConfig,
   writeSyncState,
   type SyncPayload
 } from '../data/sync'
-import { coverUrlOf, importEpubFile, pickEpubFiles } from '../data/import'
+import { coverUrlOf, importEpubBytes, importEpubFile, pickEpubFiles } from '../data/import'
 import { listBooks } from '../data/db'
 import type {
   Book,
@@ -311,6 +313,49 @@ function readSettings(): Settings {
 }
 
 
+/** 「全部下载云端书籍」：读 manifest → 逐本下载 → 解析入库（跳过本机已有的） */
+async function downloadCloudBooks(): Promise<SyncState> {
+  const config = readDavConfig()
+  if (!config) return writeSyncState({ message: '请先在设置里配置 WebDAV，再点「保存并连接」' })
+  const files = await davReadManifest(config)
+  const keys = Object.keys(files)
+  if (keys.length === 0) {
+    return writeSyncState({ message: '云端还没有书籍：先在电脑端点「上传书籍」' })
+  }
+  const have = new Set((await listBooks()).map((item) => item.id))
+  let done = 0
+  const failed: string[] = []
+  for (const key of keys) {
+    const id = key.startsWith('sha1:') ? key : `sha1:${key}`
+    const title = files[key]?.title ?? key.slice(0, 12)
+    if (have.has(id)) continue
+    writeSyncState({
+      message: `正在下载 ${done + 1}/${keys.length}：${title}`,
+      transferred: done,
+      total: keys.length
+    })
+    const bytes = await davReadBook(config, key)
+    if (!bytes) {
+      failed.push(title)
+      continue
+    }
+    const result = await importEpubBytes(bytes, `${title}.epub`, id)
+    if (result.book) done += 1
+    else failed.push(`${title}（${result.error ?? '解析失败'}）`)
+  }
+  const message =
+    failed.length > 0
+      ? `已下载 ${done} 本，失败 ${failed.length} 本：${failed.slice(0, 3).join('、')}`
+      : `已下载 ${done} 本`
+  return writeSyncState({
+    message,
+    lastSyncAt: Date.now(),
+    loggedIn: true,
+    account: config.username,
+    transferred: done,
+    total: keys.length
+  })
+}
 /* ---------- 网盘同步：把本地进度/时长与云端合并（v1） ---------- */
 
 /** 把云端合并结果写回本地（进度取较新的、每日时长取较大值） */
@@ -504,7 +549,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '1.1.7',
+        version: '1.2.0',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -760,7 +805,7 @@ export function createLocalApi(): unknown {
       },
       run: () => runSync(),
       cancel: async () => writeSyncState({ message: '已取消' }),
-      downloadAll: () => runSync(),
+      downloadAll: () => downloadCloudBooks(),
       conflicts: async () => [],
       resolve: async () => readSyncState(),
       configureWebdav: async (payload: { url: string; username: string; password: string }) => {
