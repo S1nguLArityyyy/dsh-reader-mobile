@@ -581,15 +581,15 @@ export function ReaderPage() {
         </button>
       </div>
 
+      {/* 页眉：章节名常驻在正文上方 —— 放在滚动容器**外面**，所以永远可见
+          （放里面用 sticky 会被 flex 压成一列竖排，踩过） */}
+      {!loading ? <div className="reader-runhead">{reader.chapterLabel}</div> : null}
+
       <div
         className={`reader-body${mode === 'paged' ? ' paged' : ''}`}
         ref={attachBody}
         onClick={handleBodyClick}
       >
-        {/* 页眉：正文上方一行小字显示当前章节（参考图三那种 ~章节名~ 的细行），随正文一起滚 */}
-        {mode === 'scroll' && !loading ? (
-          <div className="reader-runhead">{reader.chapterLabel}</div>
-        ) : null}
         {loading && !html ? (
           <div className="reader-loading">正在解析章节…</div>
         ) : mode === 'paged' ? (
