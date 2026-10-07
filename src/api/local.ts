@@ -395,7 +395,15 @@ async function downloadBaiduBooks(): Promise<SyncState> {
       transferred: done,
       total: keys.length
     })
-    const bytes = await baiduOpenReadFile(`${remote}/books/${encodeURIComponent(key)}.epub`).catch(() => null)
+    const bytes = await baiduOpenReadFile(`${remote}/books/${encodeURIComponent(key)}.epub`, (loaded, total) => {
+      const pct = total > 0 ? Math.round((loaded / total) * 100) : 0
+      writeSyncState({
+        phase: 'running',
+        message: `正在下载 ${done + 1}/${keys.length}：${title}  ${pct}%（${Math.round(loaded / 1024)}KB/${Math.round(total / 1024)}KB）`,
+        transferred: done,
+        total: keys.length
+      })
+    }).catch(() => null)
     if (!bytes) {
       failed.push(title)
       continue
@@ -610,7 +618,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '1.5.9',
+        version: '1.6.0',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
