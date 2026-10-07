@@ -13,7 +13,8 @@ import {
   Search,
   Trash2,
   Upload,
-  X
+  X,
+  RefreshCw
 } from 'lucide-react'
 import type { Book } from '@shared/types'
 import { useApp } from '../store/app'
@@ -289,12 +290,12 @@ export function LibraryPage() {
         </h1>
         <div className="head-actions">
           {/* 只同步阅读记录，不下载书，秒级完成 */}
-          <button
-            className="btn btn-ghost btn-sm"
+            <button
+            className="icon-btn"
             title="只同步阅读记录（不下载书）"
             onClick={() => void (window.api as unknown as { sync: { recordsOnly: () => Promise<unknown> } }).sync.recordsOnly()}
           >
-            刷新记录
+              <RefreshCw size={19} />
           </button>
           {seriesFilter && !query ? (
             <button className="btn btn-ghost btn-sm" onClick={() => setSeriesFilter(null)}>
