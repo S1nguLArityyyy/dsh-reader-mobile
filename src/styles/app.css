@@ -2498,10 +2498,11 @@
   /* 选中标识：正圆，圆心对准图标中心；切换时用带过冲的弹簧曲线做"q 弹"效果 */
   .mobile-nav-dot {
     position: absolute;
-    top: 8px;
-    width: 34px;
-    height: 34px;
-    margin-left: -17px;
+    /* 40px：正好把 20px 的图标整个罩住（之前 34px 偏小、露出图标边） */
+    top: 1px;
+    width: 40px;
+    height: 40px;
+    margin-left: -20px;
     border-radius: 50%;
     background: color-mix(in srgb, var(--primary) 20%, transparent);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 28%, transparent);
