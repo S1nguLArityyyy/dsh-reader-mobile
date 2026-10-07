@@ -1,8 +1,6 @@
 import { fetchLanBook, listLanBooks } from '../data/lan'
 import {  AUTH_URL as baiduAuthUrl, accessToken as baiduToken, diagnose as baiduOpenDiagnose, readFile as baiduOpenReadFile, readJson as baiduOpenReadJson } from '../data/baidu-open'
 import { unzipSync } from 'fflate'
-import {
-} from '../data/baidu'
 import { deleteBook, getBook, listBooks, putBook, type StoredBook } from '../data/db'
 import { readChapterFromZip } from '../data/epub'
 import {
@@ -672,7 +670,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.0.8',
+        version: '2.0.9',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
