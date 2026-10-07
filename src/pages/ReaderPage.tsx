@@ -442,6 +442,8 @@ export function ReaderPage() {
   )
 
   const totalPercent = bookPercent(book, chapterIndex, ratio)
+  // 滑块按**章节内**进度（用户要求）
+  const chapterRatio = mode === 'paged' ? (pages > 1 ? page / pages : 0) : ratio
 
   const readerStyle = useMemo(
     () =>
@@ -702,7 +704,7 @@ export function ReaderPage() {
                 title="长按后左右微调"
               >
                 {/* 填充用**全书进度**（和底栏那个百分比同一个口径，否则条形和数字对不上） */}
-                <i style={{ width: `${percentText(totalPercent)}%` }} />
+                <i style={{ width: `${percentText(chapterRatio)}%` }} />
               </div>
               <div className="tool-seek-row">
                 <button
