@@ -161,7 +161,9 @@ function defaultSettings(): Settings {
       pageWidth: 720,
       padding: 36,
       fontFamily: 'system',
-      mode: 'scroll'
+      mode: 'scroll',
+      // 这个字段漏过：设置页要按 theme 查阅读主题色，查不到就 undefined.bg 崩掉（整页卡死）
+      theme: 'paper'
     },
     appearance: {
       accent: '#3b6fd4',
@@ -184,14 +186,21 @@ function defaultSettings(): Settings {
   } as unknown as Settings
 }
 
+/**
+ * 设置对象必须**缓存同一个引用**：每次 get 都新建对象的话，
+ * 依赖 settings 的 effect 会因为引用变化反复重跑（设置页就这样卡死过）。
+ */
+let settingsCache: Settings | null = null
+
 function readSettings(): Settings {
+  if (settingsCache) return settingsCache
   try {
     const raw = localStorage.getItem(SETTINGS_KEY)
-    if (raw) return { ...defaultSettings(), ...(JSON.parse(raw) as Settings) }
+    settingsCache = raw ? { ...defaultSettings(), ...(JSON.parse(raw) as Settings) } : defaultSettings()
   } catch {
-    /* 用默认值 */
+    settingsCache = defaultSettings()
   }
-  return defaultSettings()
+  return settingsCache
 }
 
 const idleSync: SyncState = {
@@ -226,6 +235,7 @@ export function createLocalApi(): unknown {
       get: async () => readSettings(),
       set: async (patch: Partial<Settings>) => {
         const next = { ...readSettings(), ...patch }
+        settingsCache = next
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(next))
         return next
       }

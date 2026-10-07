@@ -44,6 +44,8 @@ function MobileNav() {
       className="mobile-nav"
       onPointerDown={(e) => {
         drag.current = { x: e.clientX, index: activeIndex, moved: false }
+        // 捕获指针：不捕获的话手指一移动就丢了跟踪，pointermove 根本不来（拖动无效的原因）
+        e.currentTarget.setPointerCapture?.(e.pointerId)
       }}
       onPointerMove={(e) => {
         if (drag.current && Math.abs(e.clientX - drag.current.x) > 12) drag.current.moved = true
