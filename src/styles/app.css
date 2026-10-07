@@ -2637,10 +2637,13 @@
 
   /* ---------- 今日阅读卡片：淡蓝渐变 + 大圆环（参考图 1） ---------- */
   .today-card {
-    flex-direction: row;
+    /* 用 grid 的 1fr + auto，别用 flex：flex 在窄屏上会把文字那列挤到几十 px，
+       文字就变成"一个字一行"的竖排（踩过） */
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: 8px;
-    min-height: 196px;
+    gap: 10px;
+    min-height: 186px;
     padding: 18px 16px;
     border: 1px solid #cfe0ff;
     background: linear-gradient(135deg, #d8e6ff 0%, #e9f1ff 52%, #f6faff 100%);
@@ -2648,7 +2651,6 @@
   }
 
   .today-info {
-    flex: 1;
     min-width: 0;
   }
 
