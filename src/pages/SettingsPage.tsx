@@ -20,6 +20,7 @@ export function SettingsPage() {
   const info = useApp((s) => s.info)
   const sync = useApp((s) => s.sync)
   const saveSettings = useApp((s) => s.saveSettings)
+  const refreshAll = useApp((s) => s.refreshAll)
   const setSyncModal = useApp((s) => s.setSyncModal)
   const connectSync = useApp((s) => s.connectSync)
   const configureWebdav = useApp((s) => s.configureWebdav)
@@ -491,6 +492,29 @@ export function SettingsPage() {
           </h3>
           <div className="setting-hint">书库、封面、阅读进度与统计都保存在本机这个目录，关机重启不会丢失。</div>
 
+          <div className="setting-row">
+            <div>
+              <div className="setting-label">清空所有阅读记录</div>
+              <div className="setting-desc">删除所有书的进度与阅读时长（书本身全部保留）</div>
+            </div>
+            <div className="setting-control">
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  const api = window.api as unknown as { dialog: { confirm: (o: { title: string; message: string }) => Promise<boolean> }; library: { clearAllRecords: () => Promise<unknown> } }
+                  void api.dialog.confirm({ title: '清空阅读记录', message: '删除所有书的进度与阅读时长？书会保留，此操作不可撤销。' }).then((ok) => {
+                    if (!ok) return
+                    void api.library.clearAllRecords().then(() => {
+                      toast('success', '已清空所有阅读记录')
+                      void refreshAll()
+                    })
+                  })
+                }}
+              >
+                清空
+              </button>
+            </div>
+          </div>
           <div className="setting-row">
             <div>
               <div className="setting-label">数据目录</div>

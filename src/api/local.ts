@@ -812,7 +812,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.2.1',
+        version: '2.2.2',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -885,6 +885,12 @@ export function createLocalApi(): unknown {
         delete all[bookId]
         writeProgress(all)
         writeSessions(readSessions().filter((row) => row.bookId !== bookId))
+        return undefined
+      },
+      /** 清空【所有书】的阅读记录（进度 + 时长），书全部保留 */
+      clearAllRecords: async () => {
+        writeProgress({})
+        writeSessions([])
         return undefined
       },
       remove: async (bookId: string) => {
