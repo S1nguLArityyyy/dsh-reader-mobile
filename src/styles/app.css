@@ -3306,34 +3306,53 @@
     min-width: 100px;
   }
 
-  /* 按参考图二重做滑块：整根粗圆角条（左右都不会被裁），填充部分是深色胶囊，不要圆点 */
+  /* 滑块气泡：**竖向两行** —— 上行整根滚动条、下行箭头 + 提示语；气泡本身高一点不挤 */
+  .tool-seek {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-radius: 18px;
+    background: var(--panel);
+    margin-bottom: 12px;
+  }
+
+  /* 这里必须 !important：旧规则里 .reader-progress 是 inline-flex + 固定宽，
+     不压掉的话轨道既不会占满整行、还会和箭头行并排（用户截图反馈"挤在一行"） */
   .tool-seek .reader-progress {
-    width: 100%;
-    height: 26px;
-    margin: 0;
-    border-radius: 999px;
-    overflow: hidden;
-    background: rgba(122, 142, 172, 0.22);
+    display: block !important;
+    width: 100% !important;
+    flex: 0 0 auto !important;
+    height: 26px !important;
+    margin: 0 !important;
+    border-radius: 999px !important;
+    overflow: hidden !important;
+    background: rgba(122, 142, 172, 0.22) !important;
   }
 
   .tool-seek .reader-progress::before {
-    display: none;
+    display: none !important;
   }
 
   .tool-seek .reader-progress i {
-    display: block;
-    height: 100%;
-    border-radius: 999px;
-    background: var(--primary, #3b6fd4);
+    display: block !important;
+    height: 100% !important;
+    border-radius: 999px !important;
+    background: var(--primary, #3b6fd4) !important;
   }
 
   .reader-progress-knob {
-    display: none;
+    display: none !important;
   }
 
-  /* 第二行：箭头在两端、提示语居中 */
-  .tool-seek .tool-seek-row {
-    margin-top: 8px;
+  /* 下行：箭头两端、提示语居中 */
+  .tool-seek-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0;
   }
 
   .tool-seek-hint {
