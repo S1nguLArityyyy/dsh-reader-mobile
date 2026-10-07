@@ -151,6 +151,8 @@ export function StatsPage() {
   ).length
   const readingDays = rangeDays.filter((day) => day.seconds > 0).length
   const perReadingDay = readingDays > 0 ? rangeSeconds / readingDays : 0
+  // 临时：把版本写进页面，方便确认手机上装的是哪一版（确认后删除）
+  const appVersion = '0.5.6'
 
   /* 选中的那天：默认落在最近有阅读记录的一天，进来就能看到内容 */
   const latestReadingDay = [...days]
@@ -303,6 +305,12 @@ export function StatsPage() {
               { value: 'year', label: '按年' }
             ]}
           />
+        </div>
+
+        {/* 临时调试行：定位"手机上部列表为空"的问题（确认后删除） */}
+        <div className="debug-line">
+          调试 · 版本 {appVersion} · 记录 {stats?.books?.length ?? 0} 条 · 筛选后 {history.length} 条 · 会话{' '}
+          {(stats?.days ?? []).reduce((total, day) => total + day.seconds, 0)} 秒
         </div>
 
       <div className="card history-card">
