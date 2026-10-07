@@ -2961,6 +2961,102 @@
     padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
   }
 
+  /* ============ 统计页细节（按用户反馈与参考图） ============ */
+
+  /* ① 统计卡与日历之间要有间距：之前两块贴在一起（用户截图反馈"粘到一起了"） */
+  .stats-body {
+    margin-top: 14px;
+  }
+
+  /* ② 阅读历史每一行做成淡蓝卡片（参考图三） */
+  .history-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 0;
+    border: none;
+    background: transparent;
+  }
+
+  .history-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 16px;
+    border: 1px solid #d3e1f8;
+    background: linear-gradient(160deg, #e3edfd 0%, #eef4fe 100%);
+  }
+
+  /* 参考图里没有序号，去掉 */
+  .history-index {
+    display: none;
+  }
+
+  .history-cover {
+    flex: 0 0 auto;
+    width: 86px;
+    border-radius: 10px;
+    overflow: hidden;
+    line-height: 0;
+  }
+
+  .history-cover img,
+  .history-cover > * {
+    border-radius: 10px;
+  }
+
+  .history-main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .history-title {
+    font-size: 16.5px;
+    font-weight: 700;
+    color: #16335f;
+  }
+
+  .history-author {
+    margin-top: 2px;
+    font-size: 12.5px;
+    color: #5b6f8c;
+  }
+
+  .history-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+
+  /* 时长：大字 */
+  .history-meta > span:first-child {
+    font-size: 16px;
+    font-weight: 700;
+    color: #16335f;
+  }
+
+  /* 日期胶囊（灰）与状态胶囊（蓝） */
+  .history-meta .chip {
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #b6c3d3;
+    color: #fff;
+    font-size: 12px;
+  }
+
+  .history-meta .chip.muted {
+    background: #97a5b5;
+  }
+
+  /* 右侧进度环放大到 68px（ProgressRing 有 viewBox，等比缩放） */
+  .history-row svg {
+    width: 68px;
+    height: 68px;
+  }
+
   /* ---------- 书架：一行两三本 ---------- */
   .book-grid {
     grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
