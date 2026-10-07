@@ -15,3 +15,7 @@ android/capacitor-cordova-android-plugins/
 android/.idea/
 *.iml
 .idea/
+
+# 调试产物：截图与探针输出
+.test/
+shots/
