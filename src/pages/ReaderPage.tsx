@@ -613,6 +613,19 @@ export function ReaderPage() {
             </button>
           </div>
           <div className="reader-panel-body">
+            {/* 进度控制行（参考图里面板顶部那一行：本页进度 + 左右微调） */}
+            <div className="tool-seek">
+              <button className="icon-btn sm" onClick={() => turn(-1)} title="上一页">
+                ◀
+              </button>
+              <div className="tool-seek-mid">
+                <span className="tool-seek-pct">本章 {percentText(chapterRatio)}%</span>
+                <span className="tool-seek-sub">全书 {percentText(totalPercent)}%</span>
+              </div>
+              <button className="icon-btn sm" onClick={() => turn(1)} title="下一页">
+                ▶
+              </button>
+            </div>
             <div className="tool-grid">
               <button className="tool-btn" onClick={() => setPanel('toc')}>
                 目录
