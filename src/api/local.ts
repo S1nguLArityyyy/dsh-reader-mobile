@@ -1,4 +1,4 @@
-import { fetchLanBook, listLanBooks } from '../data/lan'
+import { fetchLanBook, fetchLanRecords, listLanBooks } from '../data/lan'
 import { writeJson as baiduWriteJson, AUTH_URL as baiduAuthUrl, accessToken as baiduToken, diagnose as baiduOpenDiagnose, readFile as baiduOpenReadFile, readJson as baiduOpenReadJson } from '../data/baidu-open'
 import { unzipSync } from 'fflate'
 import { deleteBook, getBook, listBooks, putBook, type StoredBook } from '../data/db'
@@ -194,7 +194,7 @@ function toToc(data: ExportedLibrary): BookOpenPayload['toc'] {
  * 所以所有读写都再镜像一份到内存：localStorage 里有就用它，没有就用内存里的。
  */
 const memoryProgress: Record<string, Progress> = {}
-const memorySessions: Array<{ bookId: string; day: string; seconds: number }> = []
+const memorySessions: Array<{ bookId: string; day: string; seconds: number; deviceId?: string }> = []
 
 function readProgress(): Record<string, Progress> {
   let stored: Record<string, Progress> = {}
@@ -215,8 +215,8 @@ function writeProgress(all: Record<string, Progress>): void {
   }
 }
 
-function readSessions(): Array<{ bookId: string; day: string; seconds: number }> {
-  let stored: Array<{ bookId: string; day: string; seconds: number }> = []
+function readSessions(): Array<{ bookId: string; day: string; seconds: number; deviceId?: string }> {
+  let stored: Array<{ bookId: string; day: string; seconds: number; deviceId?: string }> = []
   try {
     stored = JSON.parse(localStorage.getItem(SESSIONS_KEY) ?? '[]') as Array<{
       bookId: string
@@ -235,7 +235,7 @@ function readSessions(): Array<{ bookId: string; day: string; seconds: number }>
   return [...merged.values()]
 }
 
-function writeSessions(rows: Array<{ bookId: string; day: string; seconds: number }>): void {
+function writeSessions(rows: Array<{ bookId: string; day: string; seconds: number; deviceId?: string }>): void {
   for (const row of rows) {
     const existing = (memorySessions ?? []).find((item) => item.bookId === row.bookId && item.day === row.day)
     if (existing) existing.seconds = row.seconds
@@ -360,6 +360,63 @@ async function downloadCloudBooks(): Promise<SyncState> {
 }
 /** 「全部下载云端书籍」（百度网盘版）：manifest.json 取清单 → 逐本下载 → 解析入库 */
 /** 局域网直传：从电脑端（同一 WiFi）拉取整库（比网盘快几个数量级 ✓） */
+/**
+ * 【合并电脑端的阅读记录】—— 全部走局域网 ✓ 毫秒级 ✓ 不经网盘 ✓ 不受百度风控影响 ✓
+ *
+ * 合并规则（与桌面端一致 ✓ 谁新用谁 ✓ 不会互相覆盖）:
+ *   progress: 同一本书按 updatedAt 取新 ✓
+ *   sessions: 同一 (书, 日期, 设备) 取较大值 ✓ 不同设备各留一条 ✓ 统计时相加 ✓
+ */
+async function syncLanRecords(): Promise<{ ok: boolean; message: string }> {
+  const base = String(readSettings().sync.localCloudDir ?? '')
+  const pulled = await fetchLanRecords(base)
+  if (!pulled.ok) return { ok: false, message: pulled.message }
+
+  // 进度合并
+  const local = readProgress()
+  let progressChanged = 0
+  for (const [bookId, remote] of Object.entries(pulled.progress)) {
+    const mine = local[bookId]
+    const remoteAt = Number(remote.updatedAt ?? 0)
+    const mineAt = Number(mine?.updatedAt ?? 0)
+    if (remoteAt <= mineAt) continue
+    local[bookId] = {
+      bookId,
+      percent: Number(remote.percent ?? 0),
+      chapterIndex: Number(remote.chapterIndex ?? 0),
+      chapterTitle: String(remote.chapterTitle ?? ''),
+      scrollRatio: Number(remote.scrollRatio ?? 0),
+      updatedAt: remoteAt,
+      deviceId: String(remote.deviceId ?? 'desktop'),
+      rev: Number(remote.rev ?? 1)
+    }
+    progressChanged += 1
+  }
+  if (progressChanged > 0) writeProgress(local)
+
+  // 时长合并（按 书+日期+设备 去重 ✓ 取较大值 ✓）
+  const rows = readSessions()
+  const keyOf = (bookId: string, day: string, deviceId: string): string => `${bookId}|${day}|${deviceId}`
+  const map = new Map<string, { bookId: string; day: string; seconds: number; deviceId?: string }>()
+  for (const row of rows) map.set(keyOf(row.bookId, row.day, String(row.deviceId ?? 'mobile-local')), { ...row, deviceId: row.deviceId ?? 'mobile-local' })
+  let secondsChanged = 0
+  for (const item of pulled.sessions) {
+    const bookId = String(item.bookId ?? '')
+    const day = String(item.day ?? '')
+    if (!bookId || !day) continue
+    const deviceId = String(item.deviceId ?? 'desktop')
+    const key = keyOf(bookId, day, deviceId)
+    const seconds = Number(item.seconds ?? 0)
+    const existing = map.get(key)
+    if (!existing || seconds > existing.seconds) {
+      map.set(key, { bookId, day, seconds, deviceId })
+      secondsChanged += 1
+    }
+  }
+  if (secondsChanged > 0) writeSessions([...map.values()])
+
+  return { ok: true, message: `已合并电脑端记录：进度 ${progressChanged} 条 · 时长 ${secondsChanged} 条` }
+}
 async function downloadLanBooks(): Promise<SyncState> {
   // 顺手给旧书补算封面主色（旧版本记录里没有该字段 ✗ 详情页会显示错误的哈希色 ✓）
   void backfillCoverColors().catch(() => undefined)
@@ -731,7 +788,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.1.1',
+        version: '2.1.2',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -1025,10 +1082,10 @@ export function createLocalApi(): unknown {
       },
       run: () =>
         // 百度网盘：立即同步先等同于「拉取云端书籍」（进度合并那套是 WebDAV 的文件格式，后续再统一）
-        readSettings().sync.provider === 'lan' ? downloadLanBooks() : readSettings().sync.provider === 'baidu' ? downloadBaiduBooks().then(() => uploadRecordsBaidu()) : runSync(),
+        readSettings().sync.provider === 'lan' ? syncLanRecords().then(() => downloadLanBooks()) : readSettings().sync.provider === 'baidu' ? downloadBaiduBooks().then(() => uploadRecordsBaidu()) : runSync(),
       cancel: async () => writeSyncState({ message: '已取消' }),
       downloadAll: () =>
-          readSettings().sync.provider === 'lan' ? downloadLanBooks() : readSettings().sync.provider === 'baidu' ? downloadBaiduBooks() : downloadCloudBooks(),
+          readSettings().sync.provider === 'lan' ? syncLanRecords().then(() => downloadLanBooks()) : readSettings().sync.provider === 'baidu' ? downloadBaiduBooks() : downloadCloudBooks(),
       conflicts: async () => [],
       resolve: async () => readSyncState(),
       configureWebdav: async (payload: { url: string; username: string; password: string }) => {

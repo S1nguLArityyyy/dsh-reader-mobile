@@ -93,3 +93,31 @@ export async function fetchLanBook(base: string, name: string): Promise<Uint8Arr
     return null
   }
 }
+
+/** 拉取电脑端的阅读记录（GET /records ✓ 只读 ✓ 毫秒级 ✓ 不经网盘 ✓） */
+export async function fetchLanRecords(base: string): Promise<{
+  ok: boolean
+  progress: Record<string, Record<string, unknown>>
+  sessions: Array<Record<string, unknown>>
+  message: string
+}> {
+  const root = normalizeBase(base)
+  if (!root) return { ok: false, progress: {}, sessions: [], message: '请先填电脑的局域网地址' }
+  try {
+    const response = await CapacitorHttp.request({
+      url: `${root}/records`,
+      method: 'GET',
+      connectTimeout: 8000,
+      readTimeout: 30000
+    })
+    if (response.status !== 200) {
+      return { ok: false, progress: {}, sessions: [], message: `电脑端返回 HTTP ${response.status}` }
+    }
+    const body = asRecord(response.data)
+    const progress = (body.progress ?? {}) as Record<string, Record<string, unknown>>
+    const sessions = Array.isArray(body.sessions) ? (body.sessions as Array<Record<string, unknown>>) : []
+    return { ok: true, progress, sessions, message: `电脑端记录：进度 ${Object.keys(progress).length} 条 · 时长 ${sessions.length} 条` }
+  } catch (error) {
+    return { ok: false, progress: {}, sessions: [], message: `连不上电脑：${error instanceof Error ? error.message : String(error)}` }
+  }
+}
