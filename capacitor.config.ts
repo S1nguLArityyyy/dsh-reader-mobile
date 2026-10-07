@@ -4,6 +4,11 @@ const config: CapacitorConfig = {
   appId: 'com.dshreader.app',
   appName: 'Dsh Reader',
   webDir: 'dist',
+  server: {
+      // 允许 App 自己的 WebView 跳转到百度登录页：登录后 cookie 落在 App 的 WebView cookie jar 里，
+      // 之后 CapacitorHttp 会自动带上它 —— 这就是应用内登录 + 复用会话在安卓端的实现方式（无需原生插件）
+      allowNavigation: ['*.baidu.com', 'pan.baidu.com', 'passport.baidu.com', 'wappass.baidu.com'],
+  },
   android: {
     // 阅读器要滚动长文，允许 WebView 覆盖层滚动；混合内容保持关闭
     allowMixedContent: false,
