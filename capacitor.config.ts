@@ -8,11 +8,11 @@ const config: CapacitorConfig = {
     // 阅读器要滚动长文，允许 WebView 覆盖层滚动；混合内容保持关闭
     allowMixedContent: false,
     /**
-     * Android 15+ 对 targetSdk 35 强制 edge-to-edge：WebView 会铺到状态栏/手势条下面，
-     * 结果阅读器顶栏被状态栏压住、点不着（踩过）。'force' 让原生侧给 WebView 留出系统栏边距。
-     * 用 'auto' 不生效 —— 它只在 Android 15 且 windowOptOutEdgeToEdgeEnforcement 为 false 时才调。
+     * 全面屏适配：'disable' = WebView 铺满整屏（内容延伸到状态栏/手势条下面），
+     * 由 CSS 自己让出状态栏与手势条的位置。
+     * 用 'force' 时原生会给 WebView 留边距，屏幕上就会出现上下白边（用户反馈过）。
      */
-    adjustMarginsForEdgeToEdge: 'force'
+    adjustMarginsForEdgeToEdge: 'disable'
   },
   plugins: {
     /**

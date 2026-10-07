@@ -42,31 +42,36 @@ function MobileNav() {
   return (
     <nav
       className="mobile-nav"
-      onPointerDown={(e) => {
-        drag.current = { x: e.clientX, index: activeIndex, moved: false }
-        // 捕获指针：不捕获的话手指一移动就丢了跟踪，pointermove 根本不来（拖动无效的原因）
-        e.currentTarget.setPointerCapture?.(e.pointerId)
+      onTouchStart={(e) => {
+        const touch = e.touches[0]
+        if (touch) drag.current = { x: touch.clientX, index: activeIndex, moved: false }
       }}
-      onPointerMove={(e) => {
-        if (drag.current && Math.abs(e.clientX - drag.current.x) > 12) drag.current.moved = true
+      onTouchMove={(e) => {
+        const touch = e.touches[0]
+        if (!drag.current || !touch) return
+        if (Math.abs(touch.clientX - drag.current.x) > 10) drag.current.moved = true
+        // 注意：React 的 touchmove 监听是 passive 的，preventDefault 无效，
+        // 横向手势的默认行为由 CSS 的 touch-action: none 屏蔽
       }}
-      onPointerUp={(e) => {
+      onTouchEnd={(e) => {
         const start = drag.current
         drag.current = null
         if (!start) return
-        const dx = e.clientX - start.x
+        const touch = e.changedTouches[0]
+        if (!touch) return
+        const dx = touch.clientX - start.x
         // 拖动超过一个手指宽度才切选项卡
-        if (Math.abs(dx) < 44) return
+        if (Math.abs(dx) < 40) return
         swallowClick.current = true
         const next = start.index + (dx < 0 ? 1 : -1)
         const target = items[Math.max(0, Math.min(items.length - 1, next))]
         if (target) go(target.key)
       }}
     >
-      {/* 滑块：跟着当前选项卡平移（这就是"拖动会有动效"的那层） */}
+      {/* 选中圆点：圆心落在当前选项卡图标的中心（q 弹靠 transition 的过冲曲线） */}
       <span
-        className="mobile-nav-glow"
-        style={{ width: `${100 / items.length}%`, transform: `translateX(${activeIndex * 100}%)` }}
+        className="mobile-nav-dot"
+        style={{ left: `${((activeIndex + 0.5) * 100) / items.length}%` }}
       />
       {items.map((item) => (
         <button
