@@ -2455,19 +2455,23 @@
   .page {
     padding: 14px 14px calc(78px + env(safe-area-inset-bottom, 0px));
     -webkit-overflow-scrolling: touch;
-    /* 全面屏：WebView 铺满整屏，内容自己让出状态栏位置。
-       安卓上 env(safe-area-inset-top) 基本是 0，所以给一个状态栏基准高度 24px。 */
-    padding-top: calc(24px + env(safe-area-inset-top, 0px));
+    /*
+     * 全面屏：WebView 铺满整屏，内容自己让出状态栏。
+     * 用 max() 而不是相加 —— 相加会双重计算：本来写了 24px 基准，某些机器 env() 又不是 0，
+     * 结果标题被顶到 100px 开外（用户反馈"固定得太往下了"）。
+     */
+    padding-top: calc(8px + max(env(safe-area-inset-top, 0px), 26px));
   }
 
   .page-head {
-    /* 「本地书库」这一行固定住：页面怎么滚都不动（用户要求） */
+    /* 「本地书库」这一行固定住：页面怎么滚都不动 */
     position: sticky;
     top: 0;
     z-index: 6;
     margin-bottom: 12px;
-    padding: calc(6px + env(safe-area-inset-top, 0px)) 0 10px;
-    background: linear-gradient(to bottom, var(--bg) 72%, transparent);
+    padding: 0 0 10px;
+    /* 必须**不透明**：之前用渐变淡出，滚动时下面的内容会从标题上穿过去（用户反馈） */
+    background: var(--bg);
   }
 
   .page-title {
@@ -2630,12 +2634,6 @@
     filter: brightness(0.94);
   }
 
-  .series-chip.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-  }
-
   /* ---------- 今日阅读卡片：封面 + 信息一行，目标环换到下一行 ---------- */
   .today-card {
     flex-wrap: wrap;
@@ -2748,8 +2746,8 @@
 
   /* ---------- 阅读器：加宽触摸目标 + 底部安全区 ---------- */
   .reader-bar {
-    /* 全面屏：顶栏自己让出状态栏位置（安卓 env 多为 0，所以给 24px 基准），并收紧横向间距 */
-    padding: calc(26px + env(safe-area-inset-top, 0px)) 10px 10px;
+    /* 全面屏：顶栏自己让出状态栏（同样用 max() 避免双重计算），并收紧横向间距 */
+    padding: calc(10px + max(env(safe-area-inset-top, 0px), 26px)) 10px 10px;
     gap: 6px;
   }
 
