@@ -90,16 +90,16 @@ export function LibraryPage() {
     () => (seriesFilter ? allGroups.filter((g) => g.key === seriesFilter) : allGroups),
     [allGroups, seriesFilter]
   )
-  const activeGroup = allGroups.find((g) => g.key === seriesFilter)
+  const activeGroup = (allGroups ?? []).find((g) => g.key === seriesFilter)
 
   const continueBook = useMemo(() => {
     const list = sortBooks(books, 'recent')
     if (list.length === 0) return null
     if (stats?.todayBookId) {
-      const hit = list.find((b) => b.id === stats.todayBookId)
+      const hit = (list ?? []).find((b) => b.id === stats.todayBookId)
       if (hit) return hit
     }
-    const inProgress = list.find((b) => {
+    const inProgress = (list ?? []).find((b) => {
       const percent = percentMap.get(b.id) ?? 0
       return percent > 0.001 && percent < 0.999
     })

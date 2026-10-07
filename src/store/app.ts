@@ -94,7 +94,7 @@ const FRONT_MATTER =
   /^(封面|书封|書封|封底|书名|書名|标题|標題|制作|製作|版权|版權|版权页|版權頁|声明|聲明|免责|免責|录入|錄入|下载|下載|简介|簡介|内容简介|作品简介|目录|目次|目錄|信息|資訊|彩插|彩頁|彩页|插图|插圖|扉页|扉頁|奥付|翻译|翻譯|汉化|漢化|制作信息)/
 
 function pickStartChapter(payload: { toc: { label: string; chapterIndex: number }[] }): number {
-  const firstContent = payload.toc.find((entry) => !FRONT_MATTER.test(entry.label.trim()))
+  const firstContent = (payload.toc ?? []).find((entry) => !FRONT_MATTER.test(entry.label.trim()))
   return firstContent?.chapterIndex ?? payload.toc[0]?.chapterIndex ?? 0
 }
 

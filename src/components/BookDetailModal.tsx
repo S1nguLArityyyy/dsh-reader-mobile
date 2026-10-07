@@ -14,7 +14,7 @@ export function BookDetailModal() {
   const updateBook = useApp((s) => s.updateBook)
   const uploadBooks = useApp((s) => s.settings?.sync.uploadBooks ?? false)
 
-  const book = books.find((b) => b.id === detailBookId) ?? null
+  const book = (books ?? []).find((b) => b.id === detailBookId) ?? null
   const stat = stats?.books.find((item) => item.bookId === detailBookId)
   const percent = stat?.percent ?? 0
   const seconds = stat?.seconds ?? 0

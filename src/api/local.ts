@@ -240,7 +240,7 @@ function readSessions(): Array<{ bookId: string; day: string; seconds: number }>
 
 function writeSessions(rows: Array<{ bookId: string; day: string; seconds: number }>): void {
   for (const row of rows) {
-    const existing = memorySessions.find((item) => item.bookId === row.bookId && item.day === row.day)
+    const existing = (memorySessions ?? []).find((item) => item.bookId === row.bookId && item.day === row.day)
     if (existing) existing.seconds = row.seconds
     else memorySessions.push({ ...row })
   }
@@ -617,7 +617,7 @@ function flatTocOf(book: StoredBook): Array<{ id: string; label: string; chapter
 }
 
 function chapterLabelOf(book: StoredBook, index: number): string {
-  const hit = flatTocOf(book).find((entry) => entry.chapterIndex === index)
+  const hit = (flatTocOf(book) ?? []).find((entry) => entry.chapterIndex === index)
   return hit ? hit.label : '第 ' + (index + 1) + ' 章'
 }
 /** 批量导入：多选文件 → 逐个解析入库；返回成功的 id 与失败信息 */
@@ -668,7 +668,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '1.8.3',
+        version: '1.8.4',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -860,7 +860,7 @@ export function createLocalApi(): unknown {
         if (seconds < 1) return false
         const rows = readSessions()
         const day = dayKey()
-        const row = rows.find((item) => item.bookId === bookId && item.day === day)
+        const row = (rows ?? []).find((item) => item.bookId === bookId && item.day === day)
         if (row) row.seconds += Math.round(seconds)
         else rows.push({ bookId, day, seconds: Math.round(seconds) })
         writeSessions(rows)

@@ -82,7 +82,7 @@ export function groupBooks(books: Book[]): BookGroup[] {
       singles.push(book)
       continue
     }
-    const hit = clusters.find(
+    const hit = (clusters ?? []).find(
         (c) => c.key.startsWith(key) || key.startsWith(c.key) || similarSeries(c.key, key)
       )
     if (hit) {

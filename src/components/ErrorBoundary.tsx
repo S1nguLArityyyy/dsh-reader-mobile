@@ -29,7 +29,7 @@ export class ErrorBoundary extends Component<Props, State> {
     const { error, info } = this.state
     if (!error) return this.props.children
     return (
-      <div style={{ padding: 20, fontFamily: 'system-ui, sans-serif', lineHeight: 1.6 }}>
+      <div style={{ padding: 20, fontFamily: 'system-ui, sans-serif', lineHeight: 1.6, position: 'fixed', inset: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', background: 'var(--bg, #fff)', zIndex: 9999 }}>
         <h2 style={{ margin: '8px 0 12px' }}>出错了（已拦截，不再白屏）</h2>
         <div style={{ fontSize: 13, opacity: 0.75, marginBottom: 10 }}>
           把下面这段发给开发者即可定位 ✓ 数据没有损坏 ✓
