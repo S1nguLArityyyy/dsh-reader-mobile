@@ -3914,3 +3914,18 @@
 .modal.sheet .modal-foot {
   padding-bottom: 6px;
 }
+/* ================= 下拉菜单（书卡 ⋮ / 顶部 ⋯）不再被裁 =================
+   原来是贴着卡片绝对定位的，靠右的书一打开就超出屏幕右边缘（用户截图反馈）。
+   改成固定贴屏幕右下角的浮层：无论书在哪一列都完整可见，也不会被底部导航挡。 */
+.dropdown {
+  position: fixed;
+  left: auto;
+  right: 12px;
+  top: auto;
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  z-index: 90;
+  max-width: calc(100vw - 24px);
+  max-height: 58vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
