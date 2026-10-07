@@ -2695,6 +2695,13 @@
     justify-content: center;
   }
 
+  /* 圆环撑满它那一半（ProgressRing 带 viewBox，CSS 等比缩放不会变形） */
+  .today-goal svg {
+    width: 100%;
+    max-width: 172px;
+    height: auto;
+  }
+
   .today-card .today-goal-sub {
     margin-top: 10px;
     font-size: 12.5px;
