@@ -191,11 +191,12 @@ export function SettingsPage() {
               <select
                 className="select"
                 value={syncSettings.provider}
-                onChange={(e) => patchSync({ provider: e.target.value as 'local' | 'webdav' | 'baidu' })}
+                onChange={(e) => patchSync({ provider: e.target.value as 'local' | 'webdav' | 'baidu' | 'lan' })}
               >
                 <option value="local">本地文件夹</option>
                 <option value="webdav">WebDAV（坚果云等）</option>
                 <option value="baidu">百度网盘（应用内登录）</option>
+                <option value="lan">局域网直传（同一 WiFi，最快）</option>
               </select>
             </div>
           </div>
@@ -251,6 +252,25 @@ export function SettingsPage() {
                   ) : null}
                 </>
               ) : null}
+          {syncSettings.provider === 'lan' ? (
+            <div className="setting-row">
+              <div>
+                <div className="setting-label">电脑地址</div>
+                <div className="setting-desc">
+                  电脑端打开后会自动启动服务（端口 8787），形如 http://192.168.0.102:8787（手机需与电脑同一 WiFi）
+                </div>
+              </div>
+              <div className="setting-control">
+                <input
+                  className="input"
+                  style={{ width: 230 }}
+                  placeholder="http://192.168.0.102:8787"
+                  value={syncSettings.localCloudDir ?? ''}
+                  onChange={(e) => patchSync({ localCloudDir: e.target.value })}
+                />
+              </div>
+            </div>
+          ) : null}
               {syncSettings.provider === 'webdav' ? (
                 <button className="btn btn-ghost btn-sm" onClick={() => void logoutSync()}>
                   退出登录

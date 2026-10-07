@@ -1,3 +1,4 @@
+import { fetchLanBook, listLanBooks } from '../data/lan'
 import { AUTH_URL as baiduAuthUrl, accessToken as baiduToken, diagnose as baiduOpenDiagnose, readFile as baiduOpenReadFile, readJson as baiduOpenReadJson } from '../data/baidu-open'
 import { unzipSync } from 'fflate'
 import {
@@ -361,6 +362,51 @@ async function downloadCloudBooks(): Promise<SyncState> {
   })
 }
 /** 「全部下载云端书籍」（百度网盘版）：manifest.json 取清单 → 逐本下载 → 解析入库 */
+/** 局域网直传：从电脑端（同一 WiFi）拉取整库（比网盘快几个数量级 ✓） */
+async function downloadLanBooks(): Promise<SyncState> {
+  writeSyncState({ phase: 'running', message: '正在读取电脑书库…' })
+  const base = String(readSettings().sync.localCloudDir ?? '')
+  const listed = await listLanBooks(base)
+  if (!listed.ok || listed.books.length === 0) {
+    return writeSyncState({ phase: 'idle', message: `局域网：${listed.message}` })
+  }
+  const have = new Set((await listBooks()).map((item) => item.id))
+  let done = 0
+  const failed: string[] = []
+  for (let index = 0; index < listed.books.length; index += 1) {
+    const item = listed.books[index]
+    const title = item.name.replace(/\.epub$/i, '')
+    writeSyncState({
+      phase: 'running',
+      message: `正在接收 ${index + 1}/${listed.books.length}：${title}`,
+      transferred: done,
+      total: listed.books.length
+    })
+    const bytes = await fetchLanBook(base, item.name)
+    if (!bytes) {
+      failed.push(title)
+      continue
+    }
+    const result = await importEpubBytes(bytes, item.name)
+    if (result.book) {
+      if (!have.has(result.book.id)) done += 1
+    } else {
+      failed.push(`${title}（${result.error ?? '解析失败'}）`)
+    }
+  }
+  return writeSyncState({
+    phase: 'idle',
+    message:
+      failed.length > 0
+        ? `局域网：已接收 ${done} 本，失败 ${failed.length} 本：${failed.slice(0, 3).join('、')}`
+        : `局域网：已接收 ${done} 本`,
+    loggedIn: true,
+    account: `局域网 · ${base}`,
+    lastSyncAt: Date.now(),
+    transferred: done,
+    total: listed.books.length
+  })
+}
 async function downloadBaiduBooks(): Promise<SyncState> {
   // 置 running：面板才会显示已用时秒表、才会禁用「立即同步」（否则看起来像没反应）
   writeSyncState({ phase: 'running', message: '正在读取云端清单…' })
@@ -618,7 +664,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '1.7.1',
+        version: '1.8.0',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -864,6 +910,9 @@ export function createLocalApi(): unknown {
       status: async () => readSyncState(),
       connect: async () => {
         // 百度网盘（应用内登录）走另一条通道：CapacitorHttp + WebView cookie
+        if (readSettings().sync.provider === 'lan') {
+          return downloadLanBooks()
+        }
         if (readSettings().sync.provider === 'baidu') {
           // 开放平台：整页打开授权页（oob），用户把页面上那串 32 位授权码粘回设置里
           const token = await baiduToken()
@@ -893,10 +942,10 @@ export function createLocalApi(): unknown {
       },
       run: () =>
         // 百度网盘：立即同步先等同于「拉取云端书籍」（进度合并那套是 WebDAV 的文件格式，后续再统一）
-        readSettings().sync.provider === 'baidu' ? downloadBaiduBooks() : runSync(),
+        readSettings().sync.provider === 'lan' ? downloadLanBooks() : readSettings().sync.provider === 'baidu' ? downloadBaiduBooks() : runSync(),
       cancel: async () => writeSyncState({ message: '已取消' }),
       downloadAll: () =>
-          readSettings().sync.provider === 'baidu' ? downloadBaiduBooks() : downloadCloudBooks(),
+          readSettings().sync.provider === 'lan' ? downloadLanBooks() : readSettings().sync.provider === 'baidu' ? downloadBaiduBooks() : downloadCloudBooks(),
       conflicts: async () => [],
       resolve: async () => readSyncState(),
       configureWebdav: async (payload: { url: string; username: string; password: string }) => {
