@@ -128,9 +128,9 @@ try {
     const summary = await cdp.eval("document.querySelector('.day-panel')?.innerText ?? document.querySelector('.day-summary')?.innerText ?? '（没有 .day-panel）'")
     console.log(`[探针] 二级页内容：${String(summary).replace(/\\n/g, ' / ')}`)
 
-    // 量宽度：谁比容器宽，谁就是横向溢出的元凶
+    // 量宽度/高度：谁比容器大，谁就是溢出的元凶；min-height 常把 height 顶掉，所以两个都打
     const geometry = await cdp.eval(
-      `JSON.stringify(['.app','.modal','.modal-body','.detail-hero','.detail-head','.detail-tags','.detail-facts'].map((sel) => { const el = document.querySelector(sel); if (!el) return sel + ' 无'; const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return sel + ' x=' + Math.round(r.x) + ' w=' + Math.round(r.width) + ' scrollW=' + el.scrollWidth + ' flexWrap=' + cs.flexWrap + ' minW=' + cs.minWidth }))`
+      `JSON.stringify(['.app','.modal','.modal-body','.detail-hero','.detail-head','.detail-tags','.detail-facts','.cal-cell','.day-panel'].map((sel) => { const el = document.querySelector(sel); if (!el) return sel + ' 无'; const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return sel + ' x=' + Math.round(r.x) + ' w=' + Math.round(r.width) + ' h=' + Math.round(r.height) + ' scrollW=' + el.scrollWidth + ' minH=' + cs.minHeight }))`
     )
     console.log(`[探针] 宽度：${geometry}`)
     const viewport = await cdp.eval('innerWidth')

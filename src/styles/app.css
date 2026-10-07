@@ -2822,11 +2822,15 @@
     appearance: none;
   }
 
-  /* ---------- 统计页：日历格子宽度不变、只把高度压小；数字下面加「书本色横杠」 ---------- */
+  /* ---------- 统计页：日历格子宽度不变、高度压小；数字下面加「书本色横杠」 ---------- */
   .cal-cell {
     aspect-ratio: auto;
     min-width: 0;
-    height: 40px;
+    /* 必须清掉基础的 min-height:62px —— min-height 优先级高于 height，
+       不写 0 的话 height 完全不生效，格子还是 62px（踩过） */
+    min-height: 0;
+    height: 42px;
+    padding: 4px 6px;
     overflow: hidden;
   }
 
