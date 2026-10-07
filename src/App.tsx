@@ -68,15 +68,6 @@ function MobileNav() {
         if (target) go(target.key)
       }}
     >
-      {/*
-        选中圆点：圆心落在当前选项卡图标的中心。
-        位置必须用 calc 扣掉导航条内边距（左右各 5px）——直接用百分比的话会整体偏左，踩过。
-        q 弹靠 transition 的过冲曲线。
-      */}
-      <span
-        className="mobile-nav-dot"
-        style={{ left: `calc(5px + (100% - 10px) * ${(activeIndex + 0.5) / items.length})` }}
-      />
       {items.map((item) => (
         <button
           key={item.key}
@@ -89,7 +80,15 @@ function MobileNav() {
             go(item.key)
           }}
         >
-          {item.icon}
+          {/*
+            选中圆点**包在图标里**：圆心与图标同心，位置由 CSS 决定。
+            之前用百分比/固定 top 手算坐标，浏览器里对得上、安卓上就偏（字体度量不同），
+            连着踩了两轮，改成嵌套就再也不会偏了。
+          */}
+          <span className="mobile-nav-icon">
+            {route === item.key ? <span className="mobile-nav-dot" /> : null}
+            {item.icon}
+          </span>
           <span>{item.label}</span>
         </button>
       ))}
