@@ -3966,3 +3966,35 @@
   overflow-y: auto;
   padding-bottom: 12px;
 }
+
+/* ================= 手机端页面切换改成线性淡入淡出 =================
+ * 原来用的是桌面那套左右推拉（translateX + --dir）✗
+ * 手机上表现为：旧页面残留、层在动画中重排 → 抽搐一段时间才消失 ✗（用户反馈）
+ * 现在：新页面只做透明度淡入（线性）✓ 旧页面立刻透明并禁止交互 ✓ 无位移 ✓ 不重排 ✓
+ */
+.page-layer.exiting {
+  animation: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.page-layer.entering {
+  animation: page-fade-in 0.16s linear both !important;
+  transform: none !important;
+}
+
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 手机上再短一点，切 tab 几乎无感 ✓ */
+@media (max-width: 768px) {
+  .page-layer.entering {
+    animation-duration: 0.12s !important;
+  }
+}
