@@ -14,6 +14,8 @@ import { CapacitorHttp } from '@capacitor/core'
 export interface LanBook {
   name: string
   size: number
+  /** 电脑端算好的封面主色 ✓ 手机端直接沿用 ✓ */
+  color?: string | null
 }
 
 function normalizeBase(base: string): string {
@@ -50,7 +52,11 @@ export async function listLanBooks(base: string): Promise<{ ok: boolean; books: 
     const body = asRecord(response.data)
     const list = Array.isArray(body.books) ? (body.books as Array<Record<string, unknown>>) : []
     const books = list
-      .map((item) => ({ name: String(item.name ?? ''), size: Number(item.size ?? 0) }))
+      .map((item) => ({
+        name: String(item.name ?? ''),
+        size: Number(item.size ?? 0),
+        color: typeof item.color === 'string' && item.color ? item.color : null
+      }))
       .filter((item) => item.name.length > 0)
     return { ok: true, books, message: `电脑上有 ${books.length} 本书` }
   } catch (error) {

@@ -3,7 +3,7 @@ import { AUTH_URL as baiduAuthUrl, accessToken as baiduToken, diagnose as baiduO
 import { unzipSync } from 'fflate'
 import {
 } from '../data/baidu'
-import { deleteBook, getBook, type StoredBook } from '../data/db'
+import { deleteBook, getBook, listBooks, putBook, type StoredBook } from '../data/db'
 import { readChapterFromZip } from '../data/epub'
 import {
   buildPayload,
@@ -19,7 +19,6 @@ import {
   type SyncPayload
 } from '../data/sync'
 import { backfillCoverColors, coverUrlOf, importEpubBytes, importEpubFile, pickEpubFiles } from '../data/import'
-import { listBooks } from '../data/db'
 import type {
   Book,
   BookOpenPayload,
@@ -390,6 +389,11 @@ async function downloadLanBooks(): Promise<SyncState> {
       continue
     }
     const result = await importEpubBytes(bytes, item.name)
+    // 沿用电脑端算好的主色 ✓（一个像素都不算 ✓ 两端必然一致 ✓）
+    if (result.book && item.color) {
+      const stored = await getBook(result.book.id)
+      if (stored) await putBook({ ...stored, coverColor: item.color })
+    }
     if (result.book) {
       if (!have.has(result.book.id)) done += 1
     } else {
@@ -668,7 +672,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '1.8.6',
+        version: '1.8.7',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
