@@ -80,6 +80,11 @@ export interface ReaderSettings {
   fontFamily: 'system' | 'serif' | 'kai' | 'hei'
   pageWidth: number
   padding: number
+  /** 翻页模式独立排版（未设置时回落到上面那套）—— 用户要求滚动与翻页分开设置 */
+  pagedFontSize?: number
+  pagedLineHeight?: number
+  pagedPageWidth?: number
+  pagedPadding?: number
   theme: ReaderTheme
   mode: 'scroll' | 'paged'
 }

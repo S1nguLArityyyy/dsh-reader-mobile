@@ -3594,6 +3594,13 @@
     padding: 18px var(--reader-padding) 18px;
   }
 
+  /* 翻页模式下左右留白由 .reader-body.paged 统一提供，正文页自己不要再加一遍
+     （原来 body + page + 分页计算 三处都扣，两侧特别宽 —— 用户反馈过） */
+  .reader-page.paged {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
   /* ---------- 书籍详情面板 ---------- */
   /*
    * 进度那一行横排会把「继续阅读」按钮挤出屏幕外 —— 按钮点不着、进不了阅读（踩过），

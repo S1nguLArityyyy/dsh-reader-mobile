@@ -61,11 +61,20 @@ export function ReaderPage() {
   const readerSettings = settings?.reader
   const theme = READER_THEMES[readerSettings?.theme ?? 'paper']
   const mode = readerSettings?.mode ?? 'scroll'
-  const padding = readerSettings?.padding ?? 36
+  // 页边距：翻页模式可用自己那套（用户要求两种模式分开设置）
+  const padding =
+    mode === 'paged'
+      ? (readerSettings?.pagedPadding ?? readerSettings?.padding ?? 36)
+      : (readerSettings?.padding ?? 36)
   const { bookId, chapters, chapterIndex, html, loading, book } = reader
 
   /* ---------- 分栏计算：按窗口宽度决定单栏还是双栏 ---------- */
-  const available = Math.max(0, bodySize.width - padding * 2)
+  /* 分页可用宽：翻页模式的左右留白已经由 .reader-body.paged 的 padding 提供，
+     这里**不能再减一次**（原来 body + page + 分页 三处都扣，两侧显得特别宽 —— 用户反馈） */
+  const available = Math.max(
+    0,
+    mode === 'paged' ? bodySize.width : bodySize.width - padding * 2
+  )
   const columns = mode === 'paged' && available >= MIN_COLUMN * 2 + COLUMN_GAP ? 2 : 1
   const columnWidth = useMemo(() => {
     if (columns === 1) return Math.min(readerSettings?.pageWidth ?? 720, Math.max(MIN_COLUMN, available))
@@ -454,10 +463,15 @@ export function ReaderPage() {
         '--reader-bg': theme.bg,
         '--reader-text': theme.text,
         '--reader-quote': theme.quote,
-        '--reader-width': `${readerSettings?.pageWidth ?? 720}px`,
-        '--reader-padding': `${padding}px`,
-        '--reader-size': `${readerSettings?.fontSize ?? 18}px`,
-        '--reader-lh': String(readerSettings?.lineHeight ?? 1.9),
+        // 滚动 / 翻页 各留一套排版参数：翻页模式优先用自己的值，没有则回落到通用值
+        '--reader-width': `${mode === 'paged' ? (readerSettings?.pagedPageWidth ?? readerSettings?.pageWidth ?? 720) : (readerSettings?.pageWidth ?? 720)}px`,
+        '--reader-padding': `${mode === 'paged' ? (readerSettings?.pagedPadding ?? padding) : padding}px`,
+        '--reader-size': `${mode === 'paged' ? (readerSettings?.pagedFontSize ?? readerSettings?.fontSize ?? 18) : (readerSettings?.fontSize ?? 18)}px`,
+        '--reader-lh': String(
+          mode === 'paged'
+            ? (readerSettings?.pagedLineHeight ?? readerSettings?.lineHeight ?? 1.9)
+            : (readerSettings?.lineHeight ?? 1.9)
+        ),
         '--reader-font': FONT_STACKS[(readerSettings?.fontFamily ?? 'system') as FontKey].css,
         // 翻页模式下单栏可用高度，供竖长图限高使用（减去上下内边距）
         '--reader-col-height': `${Math.max(240, bodySize.height - 58)}px`,
@@ -471,7 +485,7 @@ export function ReaderPage() {
             }
           : {})
       }) as React.CSSProperties,
-    [theme, padding, readerSettings, settings, bodySize.height]
+    [theme, padding, readerSettings, settings, bodySize.height, mode]
   )
 
   if (!book) {
@@ -824,7 +838,7 @@ export function ReaderPage() {
       {panel === 'settings' ? (
         <div className="reader-panel">
           <div className="reader-panel-head">
-            <span>排版设置</span>
+            <span>排版设置 · {mode === 'paged' ? '翻页' : '滚动'}</span>
             <button className="icon-btn sm" onClick={() => setPanel('none')}>
               <ChevronRight size={17} />
             </button>
@@ -833,39 +847,87 @@ export function ReaderPage() {
             <div className="panel-row">
               <div className="panel-row-title">
                 <span>字号</span>
-                <span className="range-value">{readerSettings?.fontSize ?? 18} px</span>
+                <span className="range-value">
+                  {mode === 'paged'
+                    ? (readerSettings?.pagedFontSize ?? readerSettings?.fontSize ?? 18)
+                    : (readerSettings?.fontSize ?? 18)}{' '}
+                  px
+                </span>
               </div>
               <Slider
-                value={readerSettings?.fontSize ?? 18}
+                value={
+                  mode === 'paged'
+                    ? (readerSettings?.pagedFontSize ?? readerSettings?.fontSize ?? 18)
+                    : (readerSettings?.fontSize ?? 18)
+                }
                 min={14}
                 max={30}
-                onChange={(v) => void saveSettings({ reader: { ...readerSettings!, fontSize: v } })}
+                onChange={(v) =>
+                  void saveSettings({
+                    reader: {
+                      ...readerSettings!,
+                      ...(mode === 'paged' ? { pagedFontSize: v } : { fontSize: v })
+                    }
+                  })
+                }
               />
             </div>
             <div className="panel-row">
               <div className="panel-row-title">
                 <span>行距</span>
-                <span className="range-value">{(readerSettings?.lineHeight ?? 1.9).toFixed(1)}</span>
+                <span className="range-value">
+                  {(mode === 'paged'
+                    ? (readerSettings?.pagedLineHeight ?? readerSettings?.lineHeight ?? 1.9)
+                    : (readerSettings?.lineHeight ?? 1.9)
+                  ).toFixed(1)}
+                </span>
               </div>
               <Slider
-                value={readerSettings?.lineHeight ?? 1.9}
+                value={
+                  mode === 'paged'
+                    ? (readerSettings?.pagedLineHeight ?? readerSettings?.lineHeight ?? 1.9)
+                    : (readerSettings?.lineHeight ?? 1.9)
+                }
                 min={1.4}
                 max={2.6}
                 step={0.1}
-                onChange={(v) => void saveSettings({ reader: { ...readerSettings!, lineHeight: v } })}
+                onChange={(v) =>
+                  void saveSettings({
+                    reader: {
+                      ...readerSettings!,
+                      ...(mode === 'paged' ? { pagedLineHeight: v } : { lineHeight: v })
+                    }
+                  })
+                }
               />
             </div>
             <div className="panel-row">
               <div className="panel-row-title">
                 <span>版心宽度</span>
-                <span className="range-value">{readerSettings?.pageWidth ?? 720} px</span>
+                <span className="range-value">
+                  {mode === 'paged'
+                    ? (readerSettings?.pagedPageWidth ?? readerSettings?.pageWidth ?? 720)
+                    : (readerSettings?.pageWidth ?? 720)}{' '}
+                  px
+                </span>
               </div>
               <Slider
-                value={readerSettings?.pageWidth ?? 720}
-                min={480}
+                value={
+                  mode === 'paged'
+                    ? (readerSettings?.pagedPageWidth ?? readerSettings?.pageWidth ?? 720)
+                    : (readerSettings?.pageWidth ?? 720)
+                }
+                min={240}
                 max={920}
                 step={20}
-                onChange={(v) => void saveSettings({ reader: { ...readerSettings!, pageWidth: v } })}
+                onChange={(v) =>
+                  void saveSettings({
+                    reader: {
+                      ...readerSettings!,
+                      ...(mode === 'paged' ? { pagedPageWidth: v } : { pageWidth: v })
+                    }
+                  })
+                }
               />
             </div>
             <div className="panel-row">
@@ -878,7 +940,14 @@ export function ReaderPage() {
                 min={12}
                 max={80}
                 step={4}
-                onChange={(v) => void saveSettings({ reader: { ...readerSettings!, padding: v } })}
+                onChange={(v) =>
+                  void saveSettings({
+                    reader: {
+                      ...readerSettings!,
+                      ...(mode === 'paged' ? { pagedPadding: v } : { padding: v })
+                    }
+                  })
+                }
               />
             </div>
             <div className="panel-row">
