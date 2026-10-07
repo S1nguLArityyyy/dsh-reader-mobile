@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import {
-  BarChart3,
   BookOpen,
   CalendarDays,
   CheckCircle2,
@@ -12,9 +11,8 @@ import {
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useApp } from '../store/app'
-import { BookCover } from '../components/BookCover'
-import { EmptyState, ProgressRing, SegmentedControl } from '../components/ui'
-import { bookBarColor, dayKey, durationParts, durationText, formatDate, percentText } from '../lib/format'
+import { SegmentedControl } from '../components/ui'
+import { bookBarColor, dayKey, durationParts, durationText } from '../lib/format'
 
 function StatCard({
   icon,
@@ -92,7 +90,6 @@ function heatLevel(seconds: number): number {
   return 5
 }
 
-type Range = 'all' | 'month' | 'year'
 
 export function StatsPage() {
   const stats = useApp((s) => s.stats)
@@ -105,7 +102,6 @@ export function StatsPage() {
   const [calendarMode, setCalendarMode] = useState<'calendar' | 'heatmap'>(() =>
     new URLSearchParams(window.location.search).get('cal') === 'heatmap' ? 'heatmap' : 'calendar'
   )
-  const [range, setRange] = useState<Range>('all')
   // 点日历某一天 → 下半部分直接显示当天读了什么（不做上滑弹层）
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
 
@@ -119,31 +115,10 @@ export function StatsPage() {
 
   const cells = useMemo(() => buildMonth(cursor.year, cursor.month), [cursor])
 
-  const history = useMemo(() => {
-    const list = (stats?.books ?? []).filter((item) => item.lastAt > 0 && bookMap.has(item.bookId))
-    const now = new Date()
-    const filtered = list.filter((item) => {
-      if (range === 'all') return true
-      const date = new Date(item.lastAt)
-      if (range === 'year') return date.getFullYear() === now.getFullYear()
-      return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()
-    })
-    return filtered
-      .sort((a, b) => b.lastAt - a.lastAt)
-      .map((item) => ({ ...item, book: bookMap.get(item.bookId)! }))
-  }, [stats, bookMap, range])
 
   /* 按「全部 / 按月 / 按年」算概览数字 —— 不然这两个按钮点了没反应（用户反馈过） */
   const days = stats?.days ?? []
-  const rangeDays = useMemo(() => {
-    const now = new Date()
-    return days.filter((day) => {
-      if (range === 'all') return true
-      const [year, month] = day.day.split('-').map(Number)
-      if (range === 'year') return year === now.getFullYear()
-      return year === now.getFullYear() && month === now.getMonth() + 1
-    })
-  }, [days, range])
+  const rangeDays = days
   const rangeSeconds = rangeDays.reduce((total, day) => total + day.seconds, 0)
   const rangeBookIds = new Set(rangeDays.flatMap((day) => day.bookIds))
   const finishedInRange = (stats?.books ?? []).filter(
@@ -152,7 +127,6 @@ export function StatsPage() {
   const readingDays = rangeDays.filter((day) => day.seconds > 0).length
   const perReadingDay = readingDays > 0 ? rangeSeconds / readingDays : 0
   // 临时：把版本写进页面，方便确认手机上装的是哪一版（确认后删除）
-  const appVersion = '0.5.9'
 
   /* 选中的那天：默认落在最近有阅读记录的一天，进来就能看到内容 */
   const latestReadingDay = [...days]
@@ -294,100 +268,8 @@ export function StatsPage() {
           </div>
         </div>
 
-        {/* 四、新起一行：全部 / 按月 / 按年 */}
-        <div className="stats-head">
-          <SegmentedControl<Range>
-            value={range}
-            onChange={setRange}
-            options={[
-              { value: 'all', label: '全部' },
-              { value: 'month', label: '按月' },
-              { value: 'year', label: '按年' }
-            ]}
-          />
-        </div>
 
-        {/* 临时调试行：定位"手机上部列表为空"的问题（确认后删除） */}
-        <div className="debug-line">
-          调试 · 版本 {appVersion} · 记录 {stats?.books?.length ?? 0} 条 · 筛选后 {history.length} 条 · 会话{' '}
-          {(stats?.days ?? []).reduce((total, day) => total + day.seconds, 0)} 秒
-        </div>
 
-      <div className="card history-card">
-          {history.length === 0 ? (
-            <EmptyState
-              icon={<BarChart3 size={26} />}
-              title="还没有阅读记录"
-              desc={range === 'all' ? '打开一本书开始阅读，这里会记录时长与进度' : '当前筛选范围内没有记录'}
-            />
-          ) : (
-            history.map((item, index) => {
-              const percent = percentText(item.percent)
-              const status = item.percent >= 0.99 ? '已读完' : item.percent > 0.001 ? '阅读中' : '未开始'
-              return (
-                <div
-                  className="history-row"
-                  key={item.bookId}
-                  /* 关键样式走行内：安卓上出现过"数据有、卡片却不渲染"（疑似被某条 CSS 规则吃掉），
-                     行内样式优先级最高，能把这类问题排除掉 */
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: 12,
-                    marginBottom: 12,
-                    minHeight: 110,
-                    borderRadius: 16,
-                    border: '1px solid #d3e1f8',
-                    background: 'linear-gradient(160deg, #e3edfd 0%, #eef4fe 100%)',
-                    boxSizing: 'border-box',
-                    width: '100%'
-                  }}
-                >
-                  <span className="history-index">{index + 1}.</span>
-                  <div
-                    className="history-cover"
-                    style={{
-                      flex: '0 0 auto',
-                      width: 86,
-                      height: 116,
-                      borderRadius: 10,
-                      overflow: 'hidden',
-                      lineHeight: 0
-                    }}
-                  >
-                    <BookCover book={item.book} />
-                  </div>
-                  <div className="history-main" style={{ flex: 1, minWidth: 0 }}>
-                    <div className="history-title" style={{ fontSize: 16.5, fontWeight: 700, color: '#16335f' }}>
-                      {item.book.title}
-                    </div>
-                    <div className="history-author" style={{ marginTop: 2, fontSize: 12.5, color: '#5b6f8c' }}>
-                      {item.book.author}
-                    </div>
-                    <div
-                      className="history-meta"
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}
-                    >
-                      <span>
-                        <Clock size={12} />
-                        {durationText(item.seconds)}
-                      </span>
-                      <span>
-                        <CalendarDays size={12} />
-                        {formatDate(item.lastAt)}
-                      </span>
-                      <span className={`chip${status === '阅读中' ? '' : ' muted'}`}>{status}</span>
-                    </div>
-                  </div>
-                  <ProgressRing percent={item.percent} size={68} stroke={6}>
-                    <span style={{ fontSize: 12, fontWeight: 600 }}>{percent}%</span>
-                  </ProgressRing>
-                </div>
-              )
-            })
-          )}
-        </div>
       </div>
     </div>
   )
