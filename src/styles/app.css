@@ -2461,11 +2461,18 @@
   }
 
   .page-head {
-    margin-bottom: 14px;
+    /* 「本地书库」这一行固定住：页面怎么滚都不动（用户要求） */
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    margin-bottom: 12px;
+    padding: calc(6px + env(safe-area-inset-top, 0px)) 0 10px;
+    background: linear-gradient(to bottom, var(--bg) 72%, transparent);
   }
 
   .page-title {
-    font-size: 21px;
+    font-size: 26px;
+    letter-spacing: 0.5px;
   }
 
   /* ---------- 底部导航：悬浮毛玻璃胶囊（可拖动切换 + 滑块动效） ---------- */
@@ -2599,27 +2606,28 @@
     flex: 0 0 auto;
     padding: 7px 13px;
     border-radius: 999px;
-    /* 原来用 panel-soft（几乎和页面底色一样白），看着像"没有按钮"：
-       改成浅灰底 + 明显描边 + 深色字 */
+    /* 未选中：浅底 + **主题色文字**（与选中态互为反转） */
     border: 1px solid var(--border-2);
-    background: var(--hover);
-    color: var(--text);
+    background: var(--panel);
+    color: var(--primary, #3b6fd4);
     font-family: inherit;
     font-size: 12.5px;
     white-space: nowrap;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    transition: background-color 0.15s, color 0.15s;
   }
 
-  .series-chip.active {
-    /* 选中态必须是**实心**的：之前白字配浅底，看着像"没选中/禁用"（用户反馈看不清） */
+  /* 选中 / 按下：填充主题色，字变白（颜色整体反转） */
+  .series-chip.active,
+  .series-chip:active {
     background-color: var(--primary, #3b6fd4);
     border-color: var(--primary, #3b6fd4);
     color: #fff;
   }
 
-  .series-chip:active {
-    filter: brightness(0.92);
+  .series-chip.active:active {
+    filter: brightness(0.94);
   }
 
   .series-chip.active {
@@ -3030,6 +3038,18 @@
     flex: 1 1 50%;
     min-width: 0;
     border-radius: 8px;
+  }
+
+  /* 两个选项之间的分隔线 + soft 变体的内描边，圆角化后会露成"一条弧线"（用户反馈），去掉 */
+  .calendar-head .segmented button + button {
+    border-left: none;
+  }
+
+  .calendar-head .segmented.soft button.active {
+    box-shadow: none;
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-weight: 600;
   }
 
   .calendar-head,
