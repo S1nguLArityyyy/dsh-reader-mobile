@@ -812,7 +812,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.1.11',
+        version: '2.2.0',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -879,6 +879,14 @@ export function createLocalApi(): unknown {
       importDialog: () => importFiles(),
       importFolderDialog: () => importFiles(),
       importPaths: async () => ({ books: [], errors: [] }),
+      /** 只清除这本书的阅读记录（进度 + 时长），书本身保留 */
+      clearRecords: async (bookId: string) => {
+        const all = readProgress()
+        delete all[bookId]
+        writeProgress(all)
+        writeSessions(readSessions().filter((row) => row.bookId !== bookId))
+        return undefined
+      },
       remove: async (bookId: string) => {
         // 内置示例书打包在 APK 里删不掉 → 记一个隐藏标记；本机导入的书直接从 IndexedDB 删除
         if (bookId.startsWith('sha1:')) {

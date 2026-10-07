@@ -580,6 +580,11 @@ export function LibraryPage() {
               { label: '归入合集…', run: () => setCollectionIds([sheetBook.id]) },
               { label: sheetBook.syncUpload ? '取消上传到网盘' : '上传到网盘', run: () => void updateBook(sheetBook.id, { syncUpload: !sheetBook.syncUpload }) },
               { label: '暂时隐藏', run: () => void updateBook(sheetBook.id, { hidden: true }) },
+              { label: '清除阅读记录（保留书）',
+                run: () => {
+                  const api = window.api as unknown as { library: { clearRecords: (id: string) => Promise<unknown> } }
+                  void api.library.clearRecords(sheetBook.id).then(() => refreshAll())
+                } },
               { label: '移出书库（保留文件）', run: () => void confirmDelete(sheetBook, false) },
               { label: '删除书籍与文件', run: () => void confirmDelete(sheetBook, true), danger: true }
             ].map((item) => (
