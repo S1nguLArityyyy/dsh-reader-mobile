@@ -133,33 +133,8 @@ export function LibraryPage() {
       longPress.timer = 0
     }
   }
-
-  /**
-   * 用【一整套事件】打开「⋯」下拉 ✓
-   * 有些下拉组件监听的是 mousedown / pointerdown ✗ 只发 click 打不开 ✗
-   */
-  const dispatchOpenSequence = (root: HTMLElement): void => {
-    const trigger = root.querySelector('.book-menu-btn') as HTMLElement | null
-    if (!trigger) return
-    const rect = trigger.getBoundingClientRect()
-    const base = {
-      bubbles: true,
-      cancelable: true,
-      view: window,
-      clientX: rect.left + rect.width / 2,
-      clientY: rect.top + rect.height / 2,
-      button: 0,
-      buttons: 1
-    }
-    for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
-      try {
-        trigger.dispatchEvent(new PointerEvent(type, { ...base, pointerId: 1, pointerType: 'touch', isPrimary: true }))
-      } catch {
-        trigger.dispatchEvent(new MouseEvent(type, base))
-      }
-    }
-  }
-  const startLongPress = (target: HTMLElement): void => {
+  const [sheetBook, setSheetBook] = useState<Book | null>(null)
+  const startLongPress = (book: Book): void => {
     if (selectMode) return
     cancelLongPress()
     longPress.fired = false
@@ -167,8 +142,7 @@ export function LibraryPage() {
       longPress.timer = 0
       longPress.fired = true
       navigator.vibrate?.(10)
-      // 程序方式点开 Dropdown 的触发器 ✓（不依赖它的内部实现 ✓ 最稳 ✓）
-      dispatchOpenSequence(target)
+      setSheetBook(book)
     }, 480)
   }
   const renderBook = (book: Book): React.ReactNode => {
@@ -178,7 +152,7 @@ export function LibraryPage() {
       <div
         className={isSelected ? "book-item selected" : "book-item"}
         key={book.id}
-        onTouchStart={(event) => startLongPress(event.currentTarget)}
+        onTouchStart={() => startLongPress(book)}
         onTouchEnd={cancelLongPress}
         onTouchMove={cancelLongPress}
         onContextMenu={(event) => event.preventDefault()}
@@ -583,6 +557,41 @@ export function LibraryPage() {
         </div>
       ) : null}
 
+      {sheetBook ? (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 900 }} onClick={() => setSheetBook(null)}>
+          <div
+            style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: 'var(--panel)', borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: '16px 0 26px', maxHeight: '72vh', overflowY: 'auto', boxShadow: '0 -10px 30px rgba(0,0,0,0.28)' }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={{ padding: '0 20px 12px', fontWeight: 600, fontSize: 15 }}>{sheetBook.title}</div>
+            {[
+              { label: '查看详情', run: () => openDetail(sheetBook.id) },
+              { label: '开始阅读', run: () => void openReader(sheetBook.id) },
+              { label: '归入合集…', run: () => setCollectionIds([sheetBook.id]) },
+              { label: sheetBook.syncUpload ? '取消上传到网盘' : '上传到网盘', run: () => void updateBook(sheetBook.id, { syncUpload: !sheetBook.syncUpload }) },
+              { label: '暂时隐藏', run: () => void updateBook(sheetBook.id, { hidden: true }) },
+              { label: '移出书库（保留文件）', run: () => void confirmDelete(sheetBook, false) },
+              { label: '删除书籍与文件', run: () => void confirmDelete(sheetBook, true), danger: true }
+            ].map((item) => (
+              <button
+                key={item.label}
+                className={item.danger ? 'btn btn-ghost btn-block danger' : 'btn btn-ghost btn-block'}
+                style={{ justifyContent: 'flex-start', borderRadius: 0, padding: '13px 20px' }}
+                onClick={() => {
+                  const target = sheetBook
+                  setSheetBook(null)
+                  if (target) item.run()
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+            <div style={{ padding: '12px 20px 0' }}>
+              <button className="btn btn-ghost btn-block" onClick={() => setSheetBook(null)}>取消</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <CollectionModal bookIds={collectionIds} onClose={() => setCollectionIds(null)} />
     </div>
   )
