@@ -2817,12 +2817,14 @@
     height: 100%;
   }
 
+  /* 圆环从 96px 放大到 168px 后，环里的字也要跟着放大（原字号是按 96px 的小环配的） */
   .today-goal .ring-value {
-    font-size: 21px;
+    font-size: 33px;
+    font-weight: 700;
   }
 
   .today-goal .ring-sub {
-    font-size: 11px;
+    font-size: 13.5px;
   }
 
   /* ---------- 书架：一行两三本 ---------- */
