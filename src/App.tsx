@@ -31,13 +31,52 @@ function MobileNav() {
     { key: 'stats', label: '统计', icon: <BarChart3 size={20} /> },
     { key: 'settings', label: '设置', icon: <SettingsIcon size={20} /> }
   ]
+  const activeIndex = Math.max(
+    0,
+    items.findIndex((item) => item.key === route)
+  )
+  const drag = useRef<{ x: number; index: number; moved: boolean } | null>(null)
+  // 拖动结束后浏览器还会补一次 click：用它把那次 click 吞掉，否则会"滑一下跳两格"
+  const swallowClick = useRef(false)
+
   return (
-    <nav className="mobile-nav">
+    <nav
+      className="mobile-nav"
+      onPointerDown={(e) => {
+        drag.current = { x: e.clientX, index: activeIndex, moved: false }
+      }}
+      onPointerMove={(e) => {
+        if (drag.current && Math.abs(e.clientX - drag.current.x) > 12) drag.current.moved = true
+      }}
+      onPointerUp={(e) => {
+        const start = drag.current
+        drag.current = null
+        if (!start) return
+        const dx = e.clientX - start.x
+        // 拖动超过一个手指宽度才切选项卡
+        if (Math.abs(dx) < 44) return
+        swallowClick.current = true
+        const next = start.index + (dx < 0 ? 1 : -1)
+        const target = items[Math.max(0, Math.min(items.length - 1, next))]
+        if (target) go(target.key)
+      }}
+    >
+      {/* 滑块：跟着当前选项卡平移（这就是"拖动会有动效"的那层） */}
+      <span
+        className="mobile-nav-glow"
+        style={{ width: `${100 / items.length}%`, transform: `translateX(${activeIndex * 100}%)` }}
+      />
       {items.map((item) => (
         <button
           key={item.key}
           className={`mobile-nav-item${route === item.key ? ' active' : ''}`}
-          onClick={() => go(item.key)}
+          onClick={() => {
+            if (swallowClick.current) {
+              swallowClick.current = false
+              return
+            }
+            go(item.key)
+          }}
         >
           {item.icon}
           <span>{item.label}</span>

@@ -2465,21 +2465,48 @@
     font-size: 21px;
   }
 
-  /* ---------- 底部导航 ---------- */
+  /* ---------- 底部导航：悬浮毛玻璃胶囊（可拖动切换 + 滑块动效） ---------- */
   .mobile-nav {
     position: fixed;
-    inset: auto 0 0 0;
-    width: 100%;
+    left: 12px;
+    right: 12px;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    width: auto;
     z-index: 60;
     display: flex;
-    height: calc(58px + env(safe-area-inset-bottom, 0px));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    background: var(--panel);
-    border-top: 1px solid var(--border);
-    box-shadow: 0 -2px 12px rgba(16, 24, 40, 0.06);
+    height: 60px;
+    padding: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(18px) saturate(170%);
+    -webkit-backdrop-filter: blur(18px) saturate(170%);
+    box-shadow: 0 10px 30px rgba(16, 24, 40, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    overflow: hidden;
+    touch-action: pan-y;
+  }
+
+  [data-theme='dark'] .mobile-nav {
+    background: rgba(26, 29, 34, 0.62);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  .mobile-nav-glow {
+    position: absolute;
+    top: 5px;
+    bottom: 5px;
+    left: 5px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary) 16%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 22%, transparent);
+    transition: transform 0.3s cubic-bezier(0.22, 0.9, 0.3, 1);
+    pointer-events: none;
   }
 
   .mobile-nav-item {
+    position: relative;
+    z-index: 1;
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -2487,6 +2514,7 @@
     justify-content: center;
     gap: 3px;
     border: none;
+    border-radius: 999px;
     background: transparent;
     color: var(--text-3);
     font-family: inherit;
@@ -2496,7 +2524,7 @@
   }
 
   .mobile-nav-item.active {
-    color: var(--accent);
+    color: var(--primary);
   }
 
   /* ---------- 触摸目标：手指比鼠标粗，按钮统一撑到 40px 以上 ---------- */
