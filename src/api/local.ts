@@ -1,5 +1,5 @@
 import { fetchLanBook, listLanBooks } from '../data/lan'
-import { AUTH_URL as baiduAuthUrl, accessToken as baiduToken, diagnose as baiduOpenDiagnose, readFile as baiduOpenReadFile, readJson as baiduOpenReadJson } from '../data/baidu-open'
+import { writeFile as baiduWriteFile, writeJson as baiduWriteJson, AUTH_URL as baiduAuthUrl, accessToken as baiduToken, diagnose as baiduOpenDiagnose, readFile as baiduOpenReadFile, readJson as baiduOpenReadJson } from '../data/baidu-open'
 import { unzipSync } from 'fflate'
 import {
 } from '../data/baidu'
@@ -479,6 +479,69 @@ async function downloadBaiduBooks(): Promise<SyncState> {
     total: keys.length
   })
 }
+/** 「上传本机书籍到云端」：把 IndexedDB 里的书写进 <remote>/books/ 并更新 manifest.json ✓ */
+async function uploadBaiduBooks(): Promise<SyncState> {
+  writeSyncState({ phase: 'running', message: '正在读取云端清单…' })
+  const settings = readSettings()
+  const remote = '/' + String(settings.sync.remoteDir || 'DshReader').replace(/^\/+|\/+$/g, '')
+  if (!(await baiduToken())) {
+    return writeSyncState({ phase: 'idle', message: '百度网盘还没授权：设置→网盘同步→点「连接」' })
+  }
+  const manifest = ((await baiduOpenReadJson(`${remote}/manifest.json`)) ?? {}) as Record<string, unknown>
+  const files = ((manifest.files ?? {}) as Record<string, { title?: string; size?: number }>) || {}
+  const books = (await listBooks()).filter((book) => book.id.startsWith('sha1:'))
+  const pending = books.filter((book) => !files[book.id])
+  if (pending.length === 0) {
+    return writeSyncState({
+      phase: 'idle',
+      message: `云端已是最新（${books.length} 本）`,
+      loggedIn: true,
+      account: '百度网盘（已授权）',
+      lastSyncAt: Date.now()
+    })
+  }
+  let done = 0
+  const failed: string[] = []
+  for (let index = 0; index < pending.length; index += 1) {
+    const book = pending[index]
+    writeSyncState({
+      phase: 'running',
+      message: `正在上传 ${index + 1}/${pending.length}：${book.title}`,
+      transferred: done,
+      total: pending.length
+    })
+    const bytes = new Uint8Array(book.epub)
+    const target = `${remote}/books/${encodeURIComponent(book.id)}.epub`
+    const result = await baiduWriteFile(target, bytes, (loaded, total) => {
+      const pct = total > 0 ? Math.round((loaded / total) * 100) : 0
+      writeSyncState({
+        phase: 'running',
+        message: `正在上传 ${index + 1}/${pending.length}：${book.title}  ${pct}%`,
+        transferred: done,
+        total: pending.length
+      })
+    })
+    if (result.ok) {
+      done += 1
+      files[book.id] = { title: book.title, size: bytes.byteLength }
+    } else {
+      failed.push(`${book.title}（${result.message}）`)
+    }
+  }
+  const saved = await baiduWriteJson(`${remote}/manifest.json`, { ...manifest, files, updatedAt: Date.now() })
+  return writeSyncState({
+    phase: 'idle',
+    message:
+      (failed.length > 0
+        ? `已上传 ${done} 本，失败 ${failed.length} 本：${failed.slice(0, 3).join('、')}`
+        : `已上传 ${done} 本`) + (saved.ok ? '' : `（清单写入失败：${saved.message}）`),
+    loggedIn: true,
+    account: '百度网盘（已授权）',
+    lastSyncAt: Date.now(),
+    transferred: done,
+    total: pending.length
+  })
+}
 /* ---------- 网盘同步：把本地进度/时长与云端合并（v1） ---------- */
 
 /** 把云端合并结果写回本地（进度取较新的、每日时长取较大值） */
@@ -672,7 +735,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.0.3',
+        version: '2.0.5',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -966,7 +1029,11 @@ export function createLocalApi(): unknown {
       },
       run: () =>
         // 百度网盘：立即同步先等同于「拉取云端书籍」（进度合并那套是 WebDAV 的文件格式，后续再统一）
-        readSettings().sync.provider === 'lan' ? downloadLanBooks() : readSettings().sync.provider === 'baidu' ? downloadBaiduBooks() : runSync(),
+        readSettings().sync.provider === 'lan'
+          ? downloadLanBooks()
+          : readSettings().sync.provider === 'baidu'
+            ? downloadBaiduBooks().then(() => uploadBaiduBooks())
+            : runSync(),
       cancel: async () => writeSyncState({ message: '已取消' }),
       downloadAll: () =>
           readSettings().sync.provider === 'lan' ? downloadLanBooks() : readSettings().sync.provider === 'baidu' ? downloadBaiduBooks() : downloadCloudBooks(),
