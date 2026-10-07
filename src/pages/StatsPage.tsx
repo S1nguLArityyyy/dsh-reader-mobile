@@ -151,7 +151,6 @@ export function StatsPage() {
   ).length
   const readingDays = rangeDays.filter((day) => day.seconds > 0).length
   const perReadingDay = readingDays > 0 ? rangeSeconds / readingDays : 0
-  const rangeLabel = range === 'month' ? '本月' : range === 'year' ? '今年' : '全部'
 
   /* 选中的那天：默认落在最近有阅读记录的一天，进来就能看到内容 */
   const latestReadingDay = [...days]
@@ -180,6 +179,15 @@ export function StatsPage() {
         <h1 className="page-title">统计</h1>
       </div>
 
+      {/* 一、四个统计概览（跟着区间筛选走） */}
+      <div className="stat-grid">
+        <StatCard icon={<BookOpen size={15} />} label="读过书籍" value={rangeBookIds.size} unit="本" />
+        <StatCard icon={<CheckCircle2 size={15} />} label="已读完" value={finishedInRange} unit="本" />
+        <StatCard icon={<Clock size={15} />} label="累计时间" parts={durationParts(rangeSeconds)} />
+        <StatCard icon={<Timer size={15} />} label="平均每天" parts={durationParts(perReadingDay)} />
+      </div>
+
+      {/* 二、阅读日历 */}
       <div className="stats-body">
         <div className="card calendar-card">
           <div className="calendar-head">
@@ -262,21 +270,40 @@ export function StatsPage() {
           </div>
         </div>
 
-      {/* 区间选择：日历正下方、单独占一行；再往下直接就是书籍列表 */}
-      <div className="stats-head">
-        <h2 className="section-title">
-          阅读历史 <span className="range-hint">{rangeLabel}</span>
-        </h2>
-        <SegmentedControl<Range>
-          value={range}
-          onChange={setRange}
-          options={[
-            { value: 'all', label: '全部' },
-            { value: 'month', label: '按月' },
-            { value: 'year', label: '按年' }
-          ]}
-        />
-      </div>
+        {/* 三、选中那天的书（紧跟日历下面） */}
+        <div className="card day-panel">
+          <div className="day-panel-head">
+            <span className="day-panel-date">{activeLabel}</span>
+            <span className="day-panel-time">
+              {activeEntry && activeEntry.seconds > 0 ? `共 ${durationText(activeEntry.seconds)}` : '没有阅读记录'}
+            </span>
+          </div>
+          <div className="day-tags">
+            {activeBooks.length === 0 ? (
+              <span className="day-tag muted">这天没有读书</span>
+            ) : (
+              activeBooks.map((book) => (
+                <button key={book.id} className="day-tag" onClick={() => void openReader(book.id)}>
+                  <i className="day-tag-bar" style={{ background: bookBarColor(book) }} />
+                  <span>{book.title}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* 四、新起一行：全部 / 按月 / 按年 */}
+        <div className="stats-head">
+          <SegmentedControl<Range>
+            value={range}
+            onChange={setRange}
+            options={[
+              { value: 'all', label: '全部' },
+              { value: 'month', label: '按月' },
+              { value: 'year', label: '按年' }
+            ]}
+          />
+        </div>
 
       <div className="card history-card">
           {history.length === 0 ? (
@@ -318,36 +345,6 @@ export function StatsPage() {
             })
           )}
         </div>
-      </div>
-
-      {/* 选中那天的信息：直接排在日历下面，不做上滑弹层 */}
-      <div className="card day-panel">
-        <div className="day-panel-head">
-          <span className="day-panel-date">{activeLabel}</span>
-          <span className="day-panel-time">
-            {activeEntry && activeEntry.seconds > 0 ? `共 ${durationText(activeEntry.seconds)}` : '没有阅读记录'}
-          </span>
-        </div>
-        <div className="day-tags">
-          {activeBooks.length === 0 ? (
-            <span className="day-tag muted">这天没有读书</span>
-          ) : (
-            activeBooks.map((book) => (
-              <button key={book.id} className="day-tag" onClick={() => void openReader(book.id)}>
-                <i className="day-tag-bar" style={{ background: bookBarColor(book) }} />
-                <span>{book.title}</span>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* 统计概览放在书籍列表下面（跟着区间筛选走） */}
-      <div className="stat-grid">
-        <StatCard icon={<BookOpen size={15} />} label="读过书籍" value={rangeBookIds.size} unit="本" />
-        <StatCard icon={<CheckCircle2 size={15} />} label="已读完" value={finishedInRange} unit="本" />
-        <StatCard icon={<Clock size={15} />} label="累计时间" parts={durationParts(rangeSeconds)} />
-        <StatCard icon={<Timer size={15} />} label="平均每天" parts={durationParts(perReadingDay)} />
       </div>
     </div>
   )
