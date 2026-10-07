@@ -1,9 +1,47 @@
 import { XMLParser } from 'fast-xml-parser'
 import { strFromU8, unzipSync } from 'fflate'
-import { existsSync } from 'node:fs'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, extname, join, posix, relative, resolve, sep } from 'node:path'
 import type { TocNode } from '../shared/types'
+
+/* ------------------------------------------------------------------
+ * 浏览器端替代 node:path 的最小实现（移植自桌面端解析器时新增）
+ * 只用到 dirname / join / normalize / relative / extname，纯字符串即可
+ * ------------------------------------------------------------------ */
+const posix = {
+  dirname(p: string): string {
+    const i = p.lastIndexOf('/')
+    return i < 0 ? '.' : i === 0 ? '/' : p.slice(0, i)
+  },
+  normalize(p: string): string {
+    const abs = p.startsWith('/')
+    const out: string[] = []
+    for (const seg of p.split('/')) {
+      if (!seg || seg === '.') continue
+      if (seg === '..') {
+        if (out.length > 0 && out[out.length - 1] !== '..') out.pop()
+        else if (!abs) out.push('..')
+      } else {
+        out.push(seg)
+      }
+    }
+    return (abs ? '/' : '') + out.join('/')
+  },
+  join(...parts: string[]): string {
+    return posix.normalize(parts.filter((part) => part.length > 0).join('/'))
+  },
+  relative(from: string, to: string): string {
+    const a = posix.normalize(from).split('/').filter(Boolean)
+    const b = posix.normalize(to).split('/').filter(Boolean)
+    let i = 0
+    while (i < a.length && i < b.length && a[i] === b[i]) i += 1
+    return [...a.slice(i).map(() => '..'), ...b.slice(i)].join('/')
+  }
+}
+
+function extname(p: string): string {
+  const base = p.slice(p.lastIndexOf('/') + 1)
+  const dot = base.lastIndexOf('.')
+  return dot <= 0 ? '' : base.slice(dot)
+}
 
 const parser = new XMLParser({
   ignoreAttributes: false,
@@ -58,9 +96,10 @@ export interface EpubMeta {
 
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.avif', '.tif', '.tiff'])
 
-/** 读取 EPUB 元数据、封面、spine 与目录（只解压需要的条目） */
-export async function readEpubMeta(filePath: string): Promise<EpubMeta> {
-  const buf = new Uint8Array(await readFile(filePath))
+/** 读取 EPUB 元数据、封面、spine 与目录（只解压需要的条目）
+ *  手机端版本：**直接接收 EPUB 字节**，不做任何文件 IO */
+export async function readEpubMetaFromBytes(bytes: Uint8Array): Promise<EpubMeta> {
+  const buf = bytes
 
   const containerRaw = unzipSync(buf, { filter: (f) => f.name === 'META-INF/container.xml' })
   const containerXml = containerRaw['META-INF/container.xml']
@@ -230,57 +269,53 @@ function resolveNavHref(href: string, baseDir: string, opfDir: string): string {
   return posix.relative(opfDir, abs)
 }
 
-/** 把书籍完整解压到缓存目录，返回缓存根目录 */
-export async function extractEpub(filePath: string, destDir: string): Promise<void> {
-  const buf = new Uint8Array(await readFile(filePath))
-  const entries = unzipSync(buf)
-  for (const [name, data] of Object.entries(entries)) {
-    if (!data || name.endsWith('/')) continue
-    const target = safeJoin(destDir, name)
-    if (!target) continue
-    await mkdir(dirname(target), { recursive: true })
-    await writeFile(target, data)
-  }
-}
-
-/** 防目录穿越 */
-function safeJoin(root: string, name: string): string | null {
-  const target = resolve(root, name.split('/').join(sep))
-  const rootResolved = resolve(root)
-  if (target !== rootResolved && !target.startsWith(rootResolved + sep)) return null
-  return target
-}
-
 export interface ChapterText {
   html: string
   title: string
 }
 
-/** 读取并净化单章正文，图片改写为 dsh:// 协议地址 */
-export async function readChapter(
-  cacheDir: string,
+/** 读取并净化单章正文（手机端：从 zip 条目表读，图片走调用方给的 toUrl/blob URL） */
+export async function readChapterFromZip(
+  files: Map<string, Uint8Array>,
   opfDir: string,
   href: string,
-  toUrl: (absPath: string) => string
+  toUrl: (path: string) => string
 ): Promise<ChapterText> {
-  const abs = safeJoin(cacheDir, opfDir ? posix.join(opfDir, href) : href)
-  if (!abs) throw new Error('章节路径非法')
-  const raw = await readFile(abs, 'utf8')
-  const baseAbs = dirname(abs)
-  const opfAbs = opfDir ? join(cacheDir, opfDir.split('/').join(sep)) : cacheDir
-  return { html: sanitizeChapter(raw, baseAbs, opfAbs, toUrl), title: extractTitle(raw) }
+  const key = posix.normalize(opfDir ? posix.join(opfDir, href) : href)
+  const bytes = files.get(key) ?? files.get(decodeURIComponent(key))
+  if (!bytes) throw new Error(`章节不存在：${key}`)
+  const raw = strFromU8(bytes)
+
+  // 资源解析：在 zip 条目表里查（先按完整路径，再退回按文件名匹配）
+  const resolveAsset = (path: string): string | null => {
+    const name = posix.normalize(path.replace(/^\.\//, ''))
+    if (files.has(name)) return name
+    const bare = name.split('/').pop() ?? ''
+    if (!bare) return null
+    for (const candidate of files.keys()) {
+      if (candidate === bare || candidate.endsWith('/' + bare)) return candidate
+    }
+    return null
+  }
+
+  return {
+    html: sanitizeChapter(raw, key, opfDir, toUrl, resolveAsset),
+    title: extractTitle(raw)
+  }
 }
 function extractTitle(html: string): string {
   const m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
   return m ? stripTags(m[1]) : ''
 }
 
-/** 净化正文：去掉脚本/样式/事件属性，重写资源与内链 */
+/** 净化正文：去掉脚本/样式/事件属性，重写资源与内链
+ *  resolveAsset 由调用方注入（手机端 = 在 zip 条目表里查） */
 export function sanitizeChapter(
   raw: string,
   baseAbs: string,
   opfAbs: string,
-  toUrl: (absPath: string) => string
+  toUrl: (absPath: string) => string,
+  resolveAsset: (abs: string) => string | null
 ): string {
   let html = raw
   const body = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
@@ -289,12 +324,6 @@ export function sanitizeChapter(
   html = html.replace(/<(script|style|link|meta|title|base|iframe|object|embed|audio|video)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
   html = html.replace(/<\/?(script|style|link|meta|title|base|iframe|object|embed|audio|video|html|head|body)\b[^>]*>/gi, '')
   html = html.replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-  const resolveAsset = (abs: string): string | null => {
-    if (existsSync(abs)) return abs
-    // 有些 EPUB 的资源路径是相对 OPF 根目录写的（虽然不合规范但很常见），回退再试一次
-    const fallback = resolve(opfAbs, relative(baseAbs, abs))
-    return existsSync(fallback) ? fallback : null
-  }
   html = html.replace(
     /\s((?:xlink:)?href|src)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi,
     (_m, attr: string, dq?: string, sq?: string) => {
@@ -333,7 +362,7 @@ function rewriteUrl(
   } catch {
     /* 保留原值 */
   }
-  const abs = resolve(baseAbs, decoded.split('/').join(sep))
+  const abs = posix.normalize(posix.join(baseAbs, decoded))
   const ext = extname(abs).toLowerCase()
 
   // src / xlink:href 一定是资源；href 若指向图片（SVG <image href>）也按资源处理
@@ -345,7 +374,7 @@ function rewriteUrl(
   }
 
   // 文档内链：转成可被渲染进程识别的锚点
-  const rel = relative(opfAbs, abs).split(sep).join('/')
+  const rel = posix.relative(opfAbs, abs)
   if (rel.startsWith('..')) return frag || ''
   return `#epub:${encodeURIComponent(rel)}${frag}`
 }
