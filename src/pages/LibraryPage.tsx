@@ -20,7 +20,7 @@ import { useApp } from '../store/app'
 import { BookCover } from '../components/BookCover'
 import { CollectionModal } from '../components/CollectionModal'
 import { Dropdown, EmptyState, ProgressRing } from '../components/ui'
-import { bookAccentColor, coverFade, percentText, remainingText } from '../lib/format'
+import { bookAccentColor, percentText, remainingText } from '../lib/format'
 import { groupBooks, sortBooks } from '../lib/library'
 
 export function LibraryPage() {
@@ -385,48 +385,55 @@ export function LibraryPage() {
       ) : (
         <>
           {!seriesFilter && !query ? (
-            <div
-              className="card today-card"
-              style={{
-                background: coverFade(
-                  continueBook ? bookAccentColor(continueBook) : null,
-                  continueBook?.id ?? 'empty'
-                )
-              }}
-            >
-              <div className="today-cover">{continueBook ? <BookCover book={continueBook} /> : null}</div>
-
+            <>
+            {/* 今日阅读大卡：淡蓝渐变 + 大圆环（参考图 1） */}
+            <div className="card today-card">
               <div className="today-info">
-                <div className="today-label">今日阅读</div>
-                <div className="today-book" title={continueBook?.title}>
-                  {continueBook?.title ?? '还没有书籍'}
+                <div className="today-label">今日阅读进度</div>
+                <div className="today-sub">
+                  {remaining === null ? '再读一会儿即可估算剩余时间' : `剩余时间：${remainingText(remaining)}`}
                 </div>
-                <div className="today-author">{continueBook?.author ?? '导入一本 EPUB 开始阅读'}</div>
-                <div className="today-actions">
-                  <button
-                    className="btn today-btn"
-                    disabled={!continueBook}
-                    onClick={() => continueBook && void openReader(continueBook.id)}
-                  >
-                    <Play size={14} fill="currentColor" />
-                    继续阅读
-                  </button>
-                  <span className="today-remaining">
-                    {remaining === null ? '再读一会儿即可估算剩余时间' : `剩余 ${remainingText(remaining)}`}
-                  </span>
-                </div>
+                <button
+                  className="btn today-btn"
+                  disabled={!continueBook}
+                  onClick={() => continueBook && void openReader(continueBook.id)}
+                >
+                  <Play size={14} fill="currentColor" />
+                  继续阅读
+                </button>
               </div>
 
               <div className="today-goal">
-                <ProgressRing percent={goalPercent} size={124} stroke={11}>
+                <ProgressRing percent={goalPercent} size={148} stroke={13}>
                   <div className="ring-value">{percentText(goalPercent)}%</div>
                   <div className="ring-sub">
-                    今日 {todayMinutes}/{goalMinutes} 分钟
+                    {todayMinutes}/{goalMinutes} 分钟
                   </div>
                 </ProgressRing>
                 <div className="today-goal-sub">全书已读 {percentText(bookProgress)}%</div>
               </div>
             </div>
+
+            {/* 接着读横幅：底色取自封面，白字（参考图 1 第二条） */}
+            {continueBook ? (
+              <button
+                className="continue-banner"
+                style={{ background: bookAccentColor(continueBook) ?? 'var(--primary)' }}
+                onClick={() => void openReader(continueBook.id)}
+              >
+                <span className="continue-cover">
+                  <BookCover book={continueBook} />
+                </span>
+                <span className="continue-main">
+                  <span className="continue-title">{continueBook.title}</span>
+                  <span className="continue-sub">
+                    {continueBook.author} · 已读完 {percentText(bookProgress)}%
+                  </span>
+                </span>
+                <span className="continue-go">›</span>
+              </button>
+            ) : null}
+            </>
           ) : null}
 
           {query ? (
