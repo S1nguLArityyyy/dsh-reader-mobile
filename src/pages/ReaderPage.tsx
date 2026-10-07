@@ -665,10 +665,16 @@ export function ReaderPage() {
               </button>
             </div>
 
-            {/* 第二行：滑块与提示语在**同一个气泡**里（拖动时每 1% 震动） */}
+            {/* 第二行：第一行整根滚动条（只做翻页定位），第二行箭头（章节跳转）+ 提示语 */}
             <div className="tool-seek">
+              <div
+                className="reader-progress"
+                onPointerDown={onBarPointerDown}
+                title="长按后左右微调"
+              >
+                <i style={{ width: `${percentText(chapterRatio)}%` }} />
+              </div>
               <div className="tool-seek-row">
-                {/* 两侧箭头 = 章节跳转；中间滚动条 = 翻页/章内定位 */}
                 <button
                   className="icon-btn sm"
                   onClick={() => void goToChapter(chapterIndex - 1)}
@@ -677,14 +683,7 @@ export function ReaderPage() {
                 >
                   <ChevronLeft size={17} />
                 </button>
-                <div
-                  className="reader-progress"
-                  onPointerDown={onBarPointerDown}
-                  title="长按后左右微调"
-                >
-                  <i style={{ width: `${percentText(chapterRatio)}%` }} />
-                  <span className="reader-progress-knob" style={{ left: `${percentText(chapterRatio)}%` }} />
-                </div>
+                <span className="tool-seek-hint">长按后左右微调</span>
                 <button
                   className="icon-btn sm"
                   onClick={() => void goToChapter(chapterIndex + 1)}
@@ -694,7 +693,6 @@ export function ReaderPage() {
                   <ChevronRight size={17} />
                 </button>
               </div>
-              <div className="tool-seek-hint">长按后左右微调</div>
             </div>
 
             {/* 第三行：样式编辑 / 目录（各占一半，都带图标） */}
