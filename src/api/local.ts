@@ -1,7 +1,6 @@
-import { accessToken as baiduToken, diagnose as baiduOpenDiagnose, readFile as baiduOpenReadFile, readJson as baiduOpenReadJson } from '../data/baidu-open'
+import { AUTH_URL as baiduAuthUrl, accessToken as baiduToken, diagnose as baiduOpenDiagnose, readFile as baiduOpenReadFile, readJson as baiduOpenReadJson } from '../data/baidu-open'
 import { unzipSync } from 'fflate'
 import {
-  connect as baiduConnect,
   diagnose as baiduDiagnose,
   readSession
 } from '../data/baidu'
@@ -609,7 +608,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '1.5.0',
+        version: '1.5.1',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -856,11 +855,21 @@ export function createLocalApi(): unknown {
       connect: async () => {
         // 百度网盘（应用内登录）走另一条通道：CapacitorHttp + WebView cookie
         if (readSettings().sync.provider === 'baidu') {
-          const result = await baiduConnect()
+          // 开放平台：整页打开授权页（oob），用户把页面上那串 32 位授权码粘回设置里
+          const token = await baiduToken()
+          if (token) {
+            const account = token ? '百度网盘（已授权）' : null
+            return writeSyncState({ loggedIn: true, account, message: '已授权 ✓ 可以直接下载云端书籍' })
+          }
+          try {
+            window.location.href = baiduAuthUrl
+          } catch {
+            /* 跳转失败也不致命，下面照样给出指引 */
+          }
           return writeSyncState({
-            loggedIn: result.ok,
-            account: result.uk ? `百度网盘 · ${result.uk}` : null,
-            message: result.message
+            loggedIn: false,
+            account: null,
+            message: '已打开授权页：登录并点「授权」→ 复制页面上的 32 位授权码 → 返回本页粘进输入框 → 点「保存授权码」'
           })
         }
         const config = readDavConfig()
