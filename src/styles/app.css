@@ -3183,13 +3183,17 @@
     overflow-y: auto;
   }
 
-  /* 阅读器页眉：正文上方一行小字显示当前章节（参考图三的细行），不抢视线 */
+  /* 阅读器页眉：章节名**常驻吸顶**（随正文滚动也一直在最上方），上方留出状态栏位置与呼吸空间 */
   .reader-runhead {
-    padding-bottom: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    padding: calc(22px + max(env(safe-area-inset-top, 0px), 26px)) 0 12px;
     margin-bottom: 20px;
     border-bottom: 1px solid rgba(128, 128, 128, 0.22);
+    /* 吸顶必须有实底，否则正文会从标题上穿过去；底色跟随阅读主题 */
+    background: var(--reader-bg, var(--panel));
     color: inherit;
-    opacity: 0.5;
     font-size: 13px;
     letter-spacing: 0.6px;
     text-align: center;
