@@ -15,7 +15,7 @@ export const SINGLES_KEY = '__singles__'
 export const MANUAL_PREFIX = 'manual:'
 
 export function sortBooks(books: Book[], sort: 'recent' | 'added' | 'title'): Book[] {
-  const list = [...books]
+  const list = [...(books ?? [])]
   if (sort === 'title') return list.sort((a, b) => a.title.localeCompare(b.title, 'zh-Hans-CN'))
   if (sort === 'added') return list.sort((a, b) => b.addedAt - a.addedAt)
   return list.sort((a, b) => (b.lastOpenedAt ?? b.addedAt) - (a.lastOpenedAt ?? a.addedAt))
@@ -48,7 +48,7 @@ export function groupBooks(books: Book[]): BookGroup[] {
   const rest: Book[] = []
 
   // 1) 手动合集
-  for (const book of books) {
+  for (const book of books ?? []) {
     const manual = book.manualSeries?.trim()
     if (manual) push(`${MANUAL_PREFIX}${manual}`, manual, book, { manual: true })
     else rest.push(book)
@@ -70,7 +70,7 @@ export function groupBooks(books: Book[]): BookGroup[] {
     if (list.length >= 2) {
       for (const book of list) push(`series:${key}`, key, book)
     } else {
-      noSeries.push(...list)
+      noSeries.push(...(list ?? []))
     }
   }
 
@@ -92,7 +92,7 @@ export function groupBooks(books: Book[]): BookGroup[] {
       clusters.push({ key, books: [book] })
     }
   }
-  for (const cluster of clusters) {
+  for (const cluster of clusters ?? []) {
     if (cluster.books.length >= 2) {
       for (const book of cluster.books) push(`fuzzy:${cluster.key}`, cluster.key, book, { fuzzy: true })
     } else {
@@ -100,8 +100,8 @@ export function groupBooks(books: Book[]): BookGroup[] {
     }
   }
 
-  const result = [...groups.values()]
-  for (const group of result) group.books.sort(byVolume)
+  const result = [...(groups?.values() ?? [])]
+  for (const group of result ?? []) group.books.sort(byVolume)
   result.sort((a, b) => {
     if (Boolean(a.manual) !== Boolean(b.manual)) return a.manual ? -1 : 1
     return b.books.length - a.books.length || a.title.localeCompare(b.title, 'zh-Hans-CN')
@@ -116,11 +116,11 @@ export function groupBooks(books: Book[]): BookGroup[] {
 /** 书库里出现过的所有合集名（手动 + 自动），用于「归入合集」的候选 */
 export function allSeriesNames(books: Book[]): string[] {
   const names = new Set<string>()
-  for (const book of books) {
+  for (const book of books ?? []) {
     if (book.manualSeries?.trim()) names.add(book.manualSeries.trim())
     if (book.seriesKey) names.add(book.seriesKey)
   }
-  return [...names].sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+  return [...(names ?? [])].sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
 }
 
 /**

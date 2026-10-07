@@ -84,8 +84,8 @@ export function LibraryPage() {
     )
   }, [books, query])
 
-  const sorted = useMemo(() => sortBooks(matched, sort), [matched, sort])
-  const allGroups = useMemo(() => groupBooks(sorted), [sorted])
+  const sorted = useMemo(() => sortBooks(matched ?? [], sort), [matched, sort])
+  const allGroups = useMemo(() => groupBooks(sorted ?? []), [sorted])
   const groups = useMemo(
     () => (seriesFilter ? allGroups.filter((g) => g.key === seriesFilter) : allGroups),
     [allGroups, seriesFilter]

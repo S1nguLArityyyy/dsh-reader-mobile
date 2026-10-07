@@ -24,7 +24,7 @@ export function Sidebar() {
   const setSyncModal = useApp((s) => s.setSyncModal)
 
   const inLibrary = route === 'library' || route === 'reader'
-  const groups = useMemo(() => groupBooks(books), [books])
+  const groups = useMemo(() => groupBooks(books ?? []), [books])
   const visibleGroups = groups.filter((g) => g.books.length > 0)
 
   return (
