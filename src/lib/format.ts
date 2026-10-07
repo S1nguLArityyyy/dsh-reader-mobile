@@ -164,16 +164,31 @@ export function accentPalette(hex: string, dark: boolean): AccentPalette {
   }
 }
 
+/**
+ * 取渐变用的 HSL 数值。
+ *
+ * 注意：有封面图时 color 是 `#RRGGBB`（能过 hexToHsl）；**没有封面图时不能**把 `hsl(...)`
+ * 字符串再喂给 hexToHsl —— 它只认十六进制，会算出 NaN，整个渐变失效变成透明
+ * （卡片发白、白字看不清，踩过）。所以回退分支直接给 HSL 数值。
+ */
+function gradientBase(color: string | null, fallbackSeed: string): { h: number; s: number; l: number } {
+  if (color) {
+    const parsed = hexToHsl(color)
+    if (Number.isFinite(parsed.h) && Number.isFinite(parsed.l)) return parsed
+  }
+  return { h: hueOf(fallbackSeed), s: 34, l: 42 }
+}
+
 /** 把封面主色转成「左深右浅」的卡片渐变（右侧融进面板色，用于今日阅读卡） */
 export function coverFade(color: string | null, fallbackSeed: string): string {
-  const base = color ?? hsl(hueOf(fallbackSeed), 34, 42)
-  const { h, s, l } = hexToHsl(base)
-  return `linear-gradient(100deg, ${hsl(h, s, Math.max(18, l - 6))} 0%, ${hsl(h, s * 0.92, Math.max(20, l))} 42%, ${hsl(
+  const { h, s, l } = gradientBase(color, fallbackSeed)
+  // 彩色区铺到 44%、50% 出头融进面板色：文字都落在彩色区上才看得清
+  // （原来 56% 就开始变淡、70% 才收完，字压在浅色区上又白又花）
+  return `linear-gradient(100deg, ${hsl(h, s, Math.max(18, l - 6))} 0%, ${hsl(
     h,
-    s * 0.72,
-    Math.max(22, l + 8),
-    0.78
-  )} 56%, var(--panel) 70%)`
+    s * 0.92,
+    Math.max(20, l)
+  )} 30%, ${hsl(h, s * 0.82, Math.max(22, l + 6), 0.92)} 44%, var(--panel) 54%)`
 }
 
 /**
@@ -188,8 +203,8 @@ export function bookAccentColor(book: { coverFile: string | null; coverColor: st
 }
 
 /** 由封面主色生成一整块彩色渐变（详情弹窗头部，白字始终可读） */
-export function coverHero(color: string | null, fallbackSeed: string): string {  const base = color ?? hsl(hueOf(fallbackSeed), 34, 42)
-  const { h, s, l } = hexToHsl(base)
+export function coverHero(color: string | null, fallbackSeed: string): string {
+  const { h, s, l } = gradientBase(color, fallbackSeed)
   return `linear-gradient(100deg, ${hsl(h, s, Math.max(20, l - 9))} 0%, ${hsl(h, s, Math.max(24, l))} 54%, ${hsl(
     h,
     Math.min(100, s * 0.88),

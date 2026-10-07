@@ -125,13 +125,14 @@ try {
       "JSON.stringify(Array.from(document.querySelectorAll('.modal')).map((m) => (m.querySelector('.modal-title')?.innerText || '?') + ' :: ' + (m.querySelector('.modal-body')?.innerText || '').replace(/\\n/g, ' / ').slice(0, 120)))"
     )
     console.log(`[探针] 点击后的弹窗：${modals}`)
-    const summary = await cdp.eval("document.querySelector('.day-summary')?.innerText ?? '（没有 .day-summary）'")
+    const summary = await cdp.eval("document.querySelector('.day-panel')?.innerText ?? document.querySelector('.day-summary')?.innerText ?? '（没有 .day-panel）'")
     console.log(`[探针] 二级页内容：${String(summary).replace(/\\n/g, ' / ')}`)
   }
 
   if (expectSelector) {
     const exists = await cdp.eval(`!!document.querySelector(${JSON.stringify(expectSelector)})`)
-    console.log(`[探针] ${expectSelector} 存在：${exists}`)
+    const text = await cdp.eval(`(document.querySelector(${JSON.stringify(expectSelector)})?.innerText ?? '').replace(/\\n/g, ' | ').slice(0, 300)`)
+    console.log(`[探针] ${expectSelector} 存在：${exists}${text ? '　内容：' + text : ''}`)
   }
 
   const errors = cdp.logs.filter((line) => line.startsWith('[error]') || line.startsWith('[异常]'))

@@ -1,21 +1,8 @@
-import { BookOpen, Clock, FileText, Play, Type } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { Play } from 'lucide-react'
 import { useApp } from '../store/app'
 import { BookCover } from './BookCover'
 import { Modal } from './ui'
 import { bookAccentColor, coverHero, durationText, formatDateTime, formatWordCount, percentText } from '../lib/format'
-
-function DetailStat({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
-  return (
-    <div className="detail-stat">
-      <div className="detail-stat-label">
-        {icon}
-        {label}
-      </div>
-      <div className="detail-stat-value">{value}</div>
-    </div>
-  )
-}
 
 /** 点击书架上的书弹出的详情面板（封面、进度、阅读时间、格式、字数、状态、简介） */
 export function BookDetailModal() {
@@ -76,11 +63,27 @@ export function BookDetailModal() {
             </button>
           </div>
 
-          <div className="detail-stats">
-            <DetailStat icon={<Clock size={13} />} label="阅读时间" value={durationText(seconds)} />
-            <DetailStat icon={<FileText size={13} />} label="书籍格式" value={book.format.toUpperCase()} />
-            <DetailStat icon={<Type size={13} />} label="总字数" value={formatWordCount(book.wordCount)} />
-            <DetailStat icon={<BookOpen size={13} />} label="阅读状态" value={status} />
+          {/*
+            手机上用「清单行」而不是四宫格卡片：窄屏下卡片容易挤变形、内容显示不全，
+            清单行标签在左、值在右，结构上保证一定显示完整。
+          */}
+          <div className="detail-rows">
+            <div className="detail-row">
+              <span>阅读时间</span>
+              <b>{durationText(seconds)}</b>
+            </div>
+            <div className="detail-row">
+              <span>书籍格式</span>
+              <b>{book.format.toUpperCase()}</b>
+            </div>
+            <div className="detail-row">
+              <span>总字数</span>
+              <b>{formatWordCount(book.wordCount)}</b>
+            </div>
+            <div className="detail-row">
+              <span>阅读状态</span>
+              <b>{status}</b>
+            </div>
           </div>
 
           <div className="detail-desc">
