@@ -2710,25 +2710,24 @@
   }
 
   .detail-fact {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
     padding: 11px 14px;
     font-size: 13px;
     border-bottom: 1px solid var(--border);
     background: var(--panel-soft);
+    line-height: 1.5;
+    white-space: normal;
   }
 
   .detail-fact:last-child {
     border-bottom: none;
   }
 
-  .detail-fact span {
+  .detail-fact .fact-label {
+    margin-right: 8px;
     color: var(--text-3);
   }
 
-  .detail-fact b {
+  .detail-fact .fact-value {
     font-weight: 600;
     color: var(--text);
   }
@@ -2807,15 +2806,11 @@
     appearance: none;
   }
 
-  /* ---------- 统计页：日历格子正方形（且小一点），数字下面加「书本色横杠」 ---------- */
+  /* ---------- 统计页：日历格子宽度不变、只把高度压小；数字下面加「书本色横杠」 ---------- */
   .cal-cell {
-    aspect-ratio: 1 / 1;
-    /* 必须给 0：网格项默认 min-width:auto，会和 aspect-ratio 互相顶，
-       把轨道越撑越宽，日历整片飞出屏幕（踩过） */
+    aspect-ratio: auto;
     min-width: 0;
-    /* 限个最大边长，格子小一点、留白多一点 */
-    max-width: 46px;
-    margin: 0 auto;
+    height: 40px;
     overflow: hidden;
   }
 

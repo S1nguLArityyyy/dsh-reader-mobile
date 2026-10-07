@@ -68,22 +68,26 @@ export function BookDetailModal() {
             清单行标签在左、值在右，结构上保证一定显示完整。
           */}
           {/*
-            统计信息用「同一个文本节点」输出（标签 + 值不再拆成两个元素）：
-            之前拆成 span/b 时值在 DOM 里存在、却画不出来（探针读得到、屏幕上看不见），
-            换成纯文本节点就绕开了这个怪问题。
+            统计信息用最朴素的行内文本（block 行 + 两个 inline span）：
+            不用 flex、不用 space-between、不用裸文本节点 —— 没有可压缩/可裁切的结构，
+            值不可能"存在但看不见"（之前 flex 方案里值一直被顶出可视区）
           */}
           <div className="detail-facts">
             <div className="detail-fact">
-              <span>阅读时间</span> {durationText(seconds)}
+              <span className="fact-label">阅读时间</span>
+              <span className="fact-value">{durationText(seconds)}</span>
             </div>
             <div className="detail-fact">
-              <span>书籍格式</span> {book.format.toUpperCase()}
+              <span className="fact-label">书籍格式</span>
+              <span className="fact-value">{book.format.toUpperCase()}</span>
             </div>
             <div className="detail-fact">
-              <span>总字数</span> {formatWordCount(book.wordCount)}
+              <span className="fact-label">总字数</span>
+              <span className="fact-value">{formatWordCount(book.wordCount)}</span>
             </div>
             <div className="detail-fact">
-              <span>阅读状态</span> {status}
+              <span className="fact-label">阅读状态</span>
+              <span className="fact-value">{status}</span>
             </div>
           </div>
 
