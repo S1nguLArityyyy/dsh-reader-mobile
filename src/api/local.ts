@@ -603,7 +603,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '1.4.4',
+        version: '1.4.5',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
