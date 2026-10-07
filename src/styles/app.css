@@ -3929,3 +3929,10 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
+/* ================= 翻页视口：横向滑动交还给应用 =================
+   翻页视口本身是横向可滚动的，手指左右拖动会被浏览器当成"横向滚动"抢走，
+   pointerup 不触发 → 滑动翻页失效（用户反馈"只能点左右"）。
+   pan-y：纵向仍交给浏览器滚动，横向由应用处理（切页）。 */
+.reader-viewport {
+  touch-action: pan-y;
+}
