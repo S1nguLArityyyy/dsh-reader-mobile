@@ -180,28 +180,6 @@ export function StatsPage() {
         <h1 className="page-title">统计</h1>
       </div>
 
-      <div className="stat-grid">
-        <StatCard icon={<BookOpen size={15} />} label="读过书籍" value={rangeBookIds.size} unit="本" />
-        <StatCard icon={<CheckCircle2 size={15} />} label="已读完" value={finishedInRange} unit="本" />
-        <StatCard icon={<Clock size={15} />} label="累计时间" parts={durationParts(rangeSeconds)} />
-        <StatCard icon={<Timer size={15} />} label="平均每天" parts={durationParts(perReadingDay)} />
-      </div>
-
-      <div className="stats-head">
-        <h2 className="section-title">
-          阅读历史 <span className="range-hint">{rangeLabel}</span>
-        </h2>
-        <SegmentedControl<Range>
-          value={range}
-          onChange={setRange}
-          options={[
-            { value: 'all', label: '全部' },
-            { value: 'month', label: '按月' },
-            { value: 'year', label: '按年' }
-          ]}
-        />
-      </div>
-
       <div className="stats-body">
         <div className="card calendar-card">
           <div className="calendar-head">
@@ -284,7 +262,23 @@ export function StatsPage() {
           </div>
         </div>
 
-        <div className="card history-card">
+      {/* 区间选择：日历正下方、单独占一行；再往下直接就是书籍列表 */}
+      <div className="stats-head">
+        <h2 className="section-title">
+          阅读历史 <span className="range-hint">{rangeLabel}</span>
+        </h2>
+        <SegmentedControl<Range>
+          value={range}
+          onChange={setRange}
+          options={[
+            { value: 'all', label: '全部' },
+            { value: 'month', label: '按月' },
+            { value: 'year', label: '按年' }
+          ]}
+        />
+      </div>
+
+      <div className="card history-card">
           {history.length === 0 ? (
             <EmptyState
               icon={<BarChart3 size={26} />}
@@ -346,6 +340,14 @@ export function StatsPage() {
             ))
           )}
         </div>
+      </div>
+
+      {/* 统计概览放在书籍列表下面（跟着区间筛选走） */}
+      <div className="stat-grid">
+        <StatCard icon={<BookOpen size={15} />} label="读过书籍" value={rangeBookIds.size} unit="本" />
+        <StatCard icon={<CheckCircle2 size={15} />} label="已读完" value={finishedInRange} unit="本" />
+        <StatCard icon={<Clock size={15} />} label="累计时间" parts={durationParts(rangeSeconds)} />
+        <StatCard icon={<Timer size={15} />} label="平均每天" parts={durationParts(perReadingDay)} />
       </div>
     </div>
   )

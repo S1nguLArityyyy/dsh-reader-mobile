@@ -2939,7 +2939,24 @@
     }
   }
 
-  /* 底部要给新导航留位置（72px + 安全区） */
+  /* 区间选择（全部/按月/按年）单独占一行：标题在上、分段控件在下、三档等分 */
+  .stats-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin: 14px 0 10px;
+  }
+
+  .stats-head .segmented {
+    width: 100%;
+  }
+
+  .stats-head .segmented button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  /* 新的底边栏高度（72px）+ 安全区，页面底部留白 */
   .page {
     padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
   }
