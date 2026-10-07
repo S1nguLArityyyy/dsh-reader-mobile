@@ -429,7 +429,10 @@ async function downloadLanBooks(): Promise<SyncState> {
   void backfillCoverColors().catch(() => undefined)
   writeSyncState({ phase: 'running', message: '正在读取电脑书库…' })
   const base = String(readSettings().sync.localCloudDir ?? '')
-  const listed = await listLanBooks(base)
+  // 把自己已有的指纹带给电脑 ✓ 让它只回缺的那几本 ✓（列表从 85 条降到 0~几条 ✓）
+  const mine = await listBooks()
+  const haveHashes = mine.map((item) => item.id.replace(/^sha1:/, '')).filter((value) => /^[0-9a-f]{40}$/i.test(value))
+  const listed = await listLanBooks(base, haveHashes)
   if (!listed.ok || listed.books.length === 0) {
     return writeSyncState({ phase: 'idle', message: `局域网：${listed.message}` })
   }
@@ -798,7 +801,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.1.4',
+        version: '2.1.5',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',

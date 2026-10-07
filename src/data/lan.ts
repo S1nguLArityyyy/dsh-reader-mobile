@@ -38,12 +38,12 @@ function asRecord(value: unknown): Record<string, unknown> {
 }
 
 /** 列出电脑书库里的书 */
-export async function listLanBooks(base: string): Promise<{ ok: boolean; books: LanBook[]; message: string }> {
+export async function listLanBooks(base: string, haveHashes: string[] = []): Promise<{ ok: boolean; books: LanBook[]; message: string }> {
   const root = normalizeBase(base)
   if (!root) return { ok: false, books: [], message: '请先填电脑的局域网地址（如 http://192.168.0.102:8787）' }
   try {
     const response = await CapacitorHttp.request({
-      url: `${root}/books.json`,
+      url: haveHashes.length > 0 ? `${root}/books.json?have=${encodeURIComponent(haveHashes.join(','))}` : `${root}/books.json`,
       method: 'GET',
       connectTimeout: 8000,
       readTimeout: 30000
