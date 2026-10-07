@@ -2537,8 +2537,11 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 3px;
+    /* 图标位置必须是**确定值**：用居中算的话，安卓字体度量与浏览器不同，
+       图标会整体下移，圆点就看起来偏高了（踩过）。改成从顶部固定留白。 */
+    justify-content: flex-start;
+    padding-top: 6px;
+    gap: 2px;
     border: none;
     border-radius: 999px;
     background: transparent;

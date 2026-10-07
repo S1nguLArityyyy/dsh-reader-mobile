@@ -130,7 +130,7 @@ try {
 
     // 量宽度/高度：谁比容器大，谁就是溢出的元凶；min-height 常把 height 顶掉，所以两个都打
     const geometry = await cdp.eval(
-      `JSON.stringify(['.app','.modal','.modal-body','.detail-hero','.detail-head','.detail-tags','.detail-facts','.cal-cell','.day-panel'].map((sel) => { const el = document.querySelector(sel); if (!el) return sel + ' 无'; const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return sel + ' x=' + Math.round(r.x) + ' w=' + Math.round(r.width) + ' h=' + Math.round(r.height) + ' scrollW=' + el.scrollWidth + ' minH=' + cs.minHeight }))`
+      `JSON.stringify(['.app','.mobile-nav','.mobile-nav-item','.mobile-nav-item svg','.mobile-nav-dot','.modal','.modal-body','.detail-hero','.detail-tags','.detail-facts','.cal-cell','.day-panel'].map((sel) => { const el = document.querySelector(sel); if (!el) return sel + ' 无'; const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return sel + ' x=' + Math.round(r.x) + ' y=' + Math.round(r.y) + ' w=' + Math.round(r.width) + ' h=' + Math.round(r.height) + ' cy=' + Math.round(r.y + r.height / 2) + ' scrollW=' + el.scrollWidth + ' minH=' + cs.minHeight }))`
     )
     console.log(`[探针] 宽度：${geometry}`)
     const viewport = await cdp.eval('innerWidth')
