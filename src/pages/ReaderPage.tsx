@@ -66,11 +66,15 @@ export function ReaderPage() {
   const { bookId, chapters, chapterIndex, html, loading, book } = reader
 
   /* ---------- 分栏计算：按窗口宽度决定单栏还是双栏 ---------- */
-  /* 分页可用宽：翻页模式的左右留白已经由 .reader-body.paged 的 padding 提供，
-     这里**不能再减一次**（原来 body + page + 分页 三处都扣，两侧显得特别宽 —— 用户反馈） */
+  /* 分页可用宽：翻页模式的左右留白**由这里算**（不再依赖 CSS padding ——
+     之前两次改 CSS 都看不到效果，因为翻页时正文宽度实际由这段 JS 决定）。
+     视口宽度 = 可用宽，居中显示，两侧自然形成留白。 */
+  const pagedSideMargin = padding + 8
   const available = Math.max(
     0,
-    mode === 'paged' ? bodySize.width : bodySize.width - padding * 2
+    mode === 'paged'
+      ? bodySize.width - pagedSideMargin * 2
+      : bodySize.width - padding * 2
   )
   const columns = mode === 'paged' && available >= MIN_COLUMN * 2 + COLUMN_GAP ? 2 : 1
   const columnWidth = useMemo(() => {

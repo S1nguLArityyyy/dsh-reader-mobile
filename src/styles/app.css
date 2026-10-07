@@ -3591,9 +3591,14 @@
   }
 
   .reader-body.paged {
-    /* 翻页模式两侧再宽一点：用户反馈"顶到屏幕边"。
-       滚动模式仍由 .reader-page 的 --reader-padding 控制，不受这里影响。 */
-    padding: 18px calc(var(--reader-padding) + 8px) 18px;
+    /* 左右留白改由分页计算（见 ReaderPage 的 available），这里不要再加 padding */
+    padding: 18px 0;
+  }
+
+  /* 翻页视口居中：宽度 = 可用宽（已扣掉两侧留白），居中后两侧留白对称 */
+  .reader-viewport {
+    margin-left: auto;
+    margin-right: auto;
   }
 
   /* 翻页模式下左右留白由 .reader-body.paged 统一提供，正文页自己不要再加一遍
