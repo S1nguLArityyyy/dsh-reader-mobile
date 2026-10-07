@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ChevronLeft, ChevronRight, Info, List, Type } from 'lucide-react'
+import { ArrowLeft, Battery, ChevronLeft, ChevronRight, Info, List, Type } from 'lucide-react'
 import type { ReaderTheme } from '@shared/types'
 import { bookPercent, useApp } from '../store/app'
 import { FONT_STACKS, READER_THEMES, type FontKey } from '../lib/reader-theme'
@@ -424,6 +424,8 @@ export function ReaderPage() {
       // 手机上**没有鼠标**：只挂 onMouseDown 的话手指根本拖不动进度条（用户反馈过），
       // 必须用 Pointer Events（鼠标 / 触摸 / 触控笔通用）。
       const bar = e.currentTarget as HTMLElement
+      // 拖动进度条即视为一次跳转：记下当前章，左上角就会出现「跳转返回」
+      setLastPos({ chapterIndex })
       dragSeek(bar, e.clientX)
       bar.setPointerCapture?.(e.pointerId)
       const onMove = (ev: PointerEvent): void => dragSeek(bar, ev.clientX)
@@ -526,6 +528,14 @@ export function ReaderPage() {
   )
 
 
+  // 章节名优先用**书本目录里的名字**（如"～第一败～ 专业青梅竹马 八奈见杏菜的惨烈败相"），
+  // 目录里没有对应条目时才退回接口给的"第 N 章"
+  let runLabel = reader.chapterLabel
+  for (const entry of reader.toc) {
+    if (entry.chapterIndex <= chapterIndex) runLabel = entry.label
+    else break
+  }
+
   return (
     <div className="reader" style={readerStyle}>
       <div
@@ -583,7 +593,21 @@ export function ReaderPage() {
 
       {/* 页眉：章节名常驻在正文上方 —— 放在滚动容器**外面**，所以永远可见
           （放里面用 sticky 会被 flex 压成一列竖排，踩过） */}
-      {!loading ? <div className="reader-runhead">{reader.chapterLabel}</div> : null}
+      {!loading ? <div className="reader-runhead">{runLabel}</div> : null}
+
+      {/* 跳转返回：左上角偏下（页眉下面），拖动过进度条后才有位置可返回 */}
+      {lastPos ? (
+        <button
+          className="reader-back-bubble"
+          onClick={() => {
+            void goToChapter(lastPos.chapterIndex)
+            setLastPos(null)
+          }}
+          title="跳转返回"
+        >
+          <ArrowLeft size={15} /> 跳转返回
+        </button>
+      ) : null}
 
       <div
         className={`reader-body${mode === 'paged' ? ' paged' : ''}`}
@@ -609,7 +633,10 @@ export function ReaderPage() {
           setPanel(panel === 'none' ? 'tools' : 'none')
         }}
       >
-        <span className="rs-item">{battery === null ? '—' : `${battery}%`}</span>
+        <span className="rs-item">
+          <Battery size={13} />
+          {battery === null ? '—' : `${battery}%`}
+        </span>
         <span className="rs-item">
           {chapterIndex + 1}/{chapters.length} · {percentText(totalPercent)}%
         </span>
@@ -660,18 +687,6 @@ export function ReaderPage() {
               </button>
               <button className="tool-btn" onClick={() => setPanel('settings')}>
                 排版
-              </button>
-              <button
-                className="tool-btn"
-                disabled={!lastPos}
-                onClick={() => {
-                  if (!lastPos) return
-                  void goToChapter(lastPos.chapterIndex)
-                  setLastPos(null)
-                }}
-                title={lastPos ? '回到跳转前的位置' : '还没有跳转过'}
-              >
-                跳转返回
               </button>
             </div>
           </div>

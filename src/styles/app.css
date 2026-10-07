@@ -3204,31 +3204,38 @@
     display: none;
   }
 
-  /* 一级：底部状态条 电量 · 页数/总章 · 百分比 · 时间（点它唤出二级菜单） */
+  /* 一级：底部状态条 电量 · 页数/总章 · 百分比 · 时间（点它唤出二级菜单）
+     颜色跟随**阅读主题**（切主题时底栏也要跟着变，之前固定用 panel 色不变） */
   .reader-status {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 10px 18px calc(10px + env(safe-area-inset-bottom, 0px));
-    border-top: 1px solid var(--border);
-    background: var(--panel);
+    border-top: 1px solid rgba(128, 128, 128, 0.22);
+    background: var(--reader-bg, var(--panel));
+    color: var(--reader-text, var(--text-3));
     font-size: 12.5px;
-    color: var(--text-3);
   }
 
   .rs-item {
     flex: 1 1 0;
     min-width: 0;
-    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     white-space: nowrap;
   }
 
   .rs-item:first-child {
-    text-align: left;
+    justify-content: flex-start;
+  }
+
+  .rs-item:nth-child(2) {
+    justify-content: center;
   }
 
   .rs-item:last-child {
-    text-align: right;
+    justify-content: flex-end;
   }
 
   /* 二级 / 三级菜单：从下方飞入，且**只有气泡**（没有面板底、没有标题栏） */
@@ -3284,16 +3291,14 @@
     grid-column: span 4;
   }
 
-  /* 跳转返回：挪到阅读页左上角，只有拖动过进度条才出现 */
+  /* 跳转返回：阅读页左上角、页眉下方一点（在正文流里，避免遮挡文字） */
   .reader-back-bubble {
-    position: absolute;
-    top: calc(12px + max(env(safe-area-inset-top, 0px), 26px));
-    left: 12px;
-    z-index: 20;
-    display: flex;
+    align-self: flex-start;
+    display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 14px;
+    margin: 10px 0 0 14px;
+    padding: 7px 14px;
     border: 1px solid rgba(255, 255, 255, 0.6);
     border-radius: 999px;
     background: var(--panel);
@@ -3302,6 +3307,13 @@
     font-size: 13px;
     box-shadow: 0 6px 18px rgba(16, 24, 40, 0.16);
     animation: reader-panel-in 0.22s ease-out both;
+  }
+
+  /* 目录 / 排版：两等分独占一行（跳转返回已移到左上角） */
+  .tool-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
   }
 
   @keyframes reader-panel-in {
@@ -3323,12 +3335,35 @@
     margin-bottom: 12px;
   }
 
-  /* 二级菜单第二行的提示文字 */
+  /* 二级面板整体再往上一点（气泡与底栏之间留出呼吸空间） */
+  .reader-tools {
+    bottom: calc(26px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* 长按调节滑块：整行（◀ + 轨道 + ▶）用气泡包出来 */
+  .tool-seek {
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-radius: 16px;
+    background: var(--panel);
+    margin-bottom: 6px;
+  }
+
+  /* 二级面板第二行的提示文字 */
   .tool-seek-hint {
-    margin: -4px 0 14px;
+    margin: -2px 0 14px;
     text-align: center;
     font-size: 12px;
     color: var(--text-3);
+  }
+
+  /* 主页：分组区与上方卡片之间的间距（原来"单册书籍"那行快贴住卡片了） */
+  .lib-section {
+    margin-top: 20px;
+  }
+
+  .section-title {
+    margin-bottom: 10px;
   }
 
   /* 深度列表：面板里的进度控制行（◀ 本章%/全书% ▶），进度条本体仍在底部栏 */
