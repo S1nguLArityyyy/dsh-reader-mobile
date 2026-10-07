@@ -67,22 +67,23 @@ export function BookDetailModal() {
             手机上用「清单行」而不是四宫格卡片：窄屏下卡片容易挤变形、内容显示不全，
             清单行标签在左、值在右，结构上保证一定显示完整。
           */}
-          <div className="detail-rows">
-            <div className="detail-row">
-              <span>阅读时间</span>
-              <b>{durationText(seconds)}</b>
+          {/*
+            统计信息用「同一个文本节点」输出（标签 + 值不再拆成两个元素）：
+            之前拆成 span/b 时值在 DOM 里存在、却画不出来（探针读得到、屏幕上看不见），
+            换成纯文本节点就绕开了这个怪问题。
+          */}
+          <div className="detail-facts">
+            <div className="detail-fact">
+              <span>阅读时间</span> {durationText(seconds)}
             </div>
-            <div className="detail-row">
-              <span>书籍格式</span>
-              <b>{book.format.toUpperCase()}</b>
+            <div className="detail-fact">
+              <span>书籍格式</span> {book.format.toUpperCase()}
             </div>
-            <div className="detail-row">
-              <span>总字数</span>
-              <b>{formatWordCount(book.wordCount)}</b>
+            <div className="detail-fact">
+              <span>总字数</span> {formatWordCount(book.wordCount)}
             </div>
-            <div className="detail-row">
-              <span>阅读状态</span>
-              <b>{status}</b>
+            <div className="detail-fact">
+              <span>阅读状态</span> {status}
             </div>
           </div>
 

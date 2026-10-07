@@ -2700,15 +2700,16 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  /* 详情页的统计：标签在左、值在右，一行一条，保证显示完整 */
-  .detail-rows {
+  /* 详情页的统计：标签在左、值在右，一行一条，保证显示完整
+     （类名叫 detail-fact，避免和已有样式撞名把值吃掉 —— 之前用 .detail-row 撞过） */
+  .detail-facts {
     margin-top: 16px;
     border-radius: 12px;
     border: 1px solid var(--border);
     overflow: hidden;
   }
 
-  .detail-row {
+  .detail-fact {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -2719,16 +2720,17 @@
     background: var(--panel-soft);
   }
 
-  .detail-row:last-child {
+  .detail-fact:last-child {
     border-bottom: none;
   }
 
-  .detail-row span {
+  .detail-fact span {
     color: var(--text-3);
   }
 
-  .detail-row b {
+  .detail-fact b {
     font-weight: 600;
+    color: var(--text);
   }
 
   /* 弹窗内容区在手机上必须能滚（不然长内容会被截断，看着像"显示不全"） */
@@ -2777,6 +2779,10 @@
   /* ---------- 统计页：日历格子正方形，数字下面加「书本色横杠」 ---------- */
   .cal-cell {
     aspect-ratio: 1 / 1;
+    /* 必须给 0：网格项默认 min-width:auto，会和 aspect-ratio 互相顶，
+       把轨道越撑越宽，日历整片飞出屏幕（踩过） */
+    min-width: 0;
+    overflow: hidden;
   }
 
   .cal-cell.selected {
