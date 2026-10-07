@@ -577,7 +577,7 @@ function toImportedBook(book: StoredBook): Book {
     fileSize: book.fileSize,
     contentHash: book.id.replace(/^sha1:/, ''),
     coverFile: book.cover ? URL.createObjectURL(book.cover) : null,
-    coverColor: null,
+    coverColor: book.coverColor ?? null,
     chapterCount: book.chapterHrefs.length,
     chapterChars: [],
     wordCount: book.wordCount,
@@ -672,7 +672,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '1.8.9',
+        version: '1.9.0',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -720,7 +720,7 @@ export function createLocalApi(): unknown {
               fileName: item.fileName,
               fileSize: item.fileSize,
               coverFile: coverUrlOf(item),
-              coverColor: null,
+              coverColor: item.coverColor ?? null,
               chapterCount: item.chapterHrefs.length,
               chapterChars: [],
               wordCount: item.wordCount,
@@ -751,6 +751,7 @@ export function createLocalApi(): unknown {
           const hidden = readHidden()
           if (!hidden.includes(bookId)) writeHidden([...hidden, bookId])
         }
+        // 返回【剩余书籍列表】以符合 store 的契约 ✓（之前返回 undefined ✗ 导致书库被置空 ✓）
         return undefined
       },
       update: async () => undefined,

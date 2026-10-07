@@ -429,7 +429,9 @@ export const useApp = create<AppStore>((set, get) => ({
   async removeBook(id, deleteFile) {
     try {
       const books = await window.api.library.remove(id, deleteFile)
-      set({ books })
+      // ⚠ 手机端的 remove 返回 undefined ✗ 直接 set({ books }) 会把书库置空 ✗（用户反馈"删一本全没了"✓）
+      if (Array.isArray(books)) set({ books })
+      else await get().loadBooks()
       await get().loadStats()
       get().toast('success', deleteFile ? '已删除书籍与文件' : '已从书库移除')
     } catch (err) {
