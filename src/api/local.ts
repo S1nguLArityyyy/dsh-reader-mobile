@@ -230,7 +230,8 @@ function defaultSettings(): Settings {
       fontSize: 18,
       lineHeight: 1.9,
       pageWidth: 720,
-      padding: 36,
+      // 页边距：手机屏窄，默认 20px（桌面端的 36px 在手机上两侧会显得很宽）
+      padding: 20,
       fontFamily: 'system',
       mode: 'scroll',
       // 这个字段漏过：设置页要按 theme 查阅读主题色，查不到就 undefined.bg 崩掉（整页卡死）

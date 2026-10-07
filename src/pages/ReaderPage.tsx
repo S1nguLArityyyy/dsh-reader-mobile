@@ -24,6 +24,9 @@ export function ReaderPage() {
   const [panel, setPanel] = useState<'none' | 'toc' | 'settings' | 'tools' | 'search'>('none')
   /** 跳转前的位置：点过目录/跳转后可以用「跳转返回」回来 */
   const [lastPos, setLastPos] = useState<{ chapterIndex: number } | null>(null)
+  /* 翻页模式的滑动翻页：起点 + "刚滑过"标记（放在提前 return 之前，避免 hooks 顺序问题） */
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null)
+  const swipeGuardRef = useRef(false)
   /* ---------- 一级界面底部状态条：电量 · 页数/总章 · 百分比 · 时间 ---------- */
   const [clock, setClock] = useState('')
   const [battery, setBattery] = useState<number | null>(null)
@@ -618,7 +621,35 @@ export function ReaderPage() {
         {loading && !html ? (
           <div className="reader-loading">正在解析章节…</div>
         ) : mode === 'paged' ? (
-          <div className="reader-viewport" style={{ width: `${screenWidth}px` }}>
+          <div
+            className="reader-viewport"
+            style={{ width: `${screenWidth}px` }}
+            /* 翻页模式：手指左右滑动翻页（水平位移 > 40px，且明显大于垂直位移） */
+            onPointerDown={(e) => {
+              if (mode !== 'paged') return
+              swipeStartRef.current = { x: e.clientX, y: e.clientY }
+            }}
+            onPointerUp={(e) => {
+              const start = swipeStartRef.current
+              swipeStartRef.current = null
+              if (!start || mode !== 'paged') return
+              const dx = e.clientX - start.x
+              const dy = e.clientY - start.y
+              if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.4) return
+              // 滑完浏览器可能补一次 click（会被当成"点两侧翻页"），先吞掉它
+              swipeGuardRef.current = true
+              window.setTimeout(() => {
+                swipeGuardRef.current = false
+              }, 400)
+              turn(dx < 0 ? 1 : -1)
+            }}
+            onClickCapture={(e) => {
+              if (swipeGuardRef.current) {
+                e.stopPropagation()
+                e.preventDefault()
+              }
+            }}
+          >
             {pageContent}
           </div>
         ) : (

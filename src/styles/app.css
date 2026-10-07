@@ -3571,17 +3571,14 @@
   }
 
   /*
-   * 阅读区留白：设置里的 36px 在 390 宽的屏上太浪费（一行装不下几个字）。
-   * --reader-padding 是内联样式给的变量，这里在**消费它的元素自己身上**重设，
-   * 就近声明压过继承来的值，不需要 !important。
+   * 阅读区留白：**必须用设置里的 --reader-padding**（内联样式注入的变量）。
+   * 这里曾经写死过 18px，结果设置页的「页边距」滑块永远无效（用户反馈"没有用处"）——
+   * 手机友好的默认值改成在数据层给（20px）。
    */
-  .reader-page,
-  .reader-body,
-  .reader-body.paged {
-    --reader-padding: 18px;
-  }
-
   .reader-page {
+    /* 版心宽度（--reader-width）要能生效：比屏幕窄时居中，两侧自然形成留白 */
+    margin-left: auto;
+    margin-right: auto;
     padding: 20px var(--reader-padding) 84px;
   }
 
