@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, Battery, ChevronLeft, ChevronRight, Info, List, Type } from 'lucide-react'
+import { ArrowLeft, Battery, ChevronLeft, ChevronRight, Info, List, LogOut, Palette, Search, Type, X } from 'lucide-react'
 import type { ReaderTheme } from '@shared/types'
 import { bookPercent, useApp } from '../store/app'
 import { FONT_STACKS, READER_THEMES, type FontKey } from '../lib/reader-theme'
@@ -21,7 +21,7 @@ export function ReaderPage() {
   const saveSettings = useApp((s) => s.saveSettings)
   const toast = useApp((s) => s.toast)
 
-  const [panel, setPanel] = useState<'none' | 'toc' | 'settings' | 'tools'>('none')
+  const [panel, setPanel] = useState<'none' | 'toc' | 'settings' | 'tools' | 'search'>('none')
   /** 跳转前的位置：点过目录/跳转后可以用「跳转返回」回来 */
   const [lastPos, setLastPos] = useState<{ chapterIndex: number } | null>(null)
   /* ---------- 一级界面底部状态条：电量 · 页数/总章 · 百分比 · 时间 ---------- */
@@ -595,8 +595,8 @@ export function ReaderPage() {
           （放里面用 sticky 会被 flex 压成一列竖排，踩过） */}
       {!loading ? <div className="reader-runhead">{runLabel}</div> : null}
 
-      {/* 跳转返回：左上角偏下（页眉下面），拖动过进度条后才有位置可返回 */}
-      {lastPos ? (
+      {/* 跳转返回：页眉下方的左上角，**跟着气泡面板一起出现/消失** */}
+      {lastPos && panel !== 'none' ? (
         <button
           className="reader-back-bubble"
           onClick={() => {
@@ -652,42 +652,64 @@ export function ReaderPage() {
             </button>
           </div>
           <div className="reader-panel-body">
-            {/* 第一行：取消 / 退出 */}
-            <div className="tool-row">
-              <button className="tool-btn" onClick={() => setPanel('none')}>
-                取消
+            {/* 第一行：搜索占三分之二 + 取消 / 退出（纯图标）—— 按用户给的成品图 */}
+            <div className="tool-row-top">
+              <button className="tool-bubble tool-bubble-wide" onClick={() => setPanel('search')}>
+                <Search size={17} /> 搜索
               </button>
-              <button className="tool-btn" onClick={closeReader}>
-                退出
+              <button className="tool-bubble" onClick={() => setPanel('none')} title="取消">
+                <X size={19} />
+              </button>
+              <button className="tool-bubble" onClick={closeReader} title="退出">
+                <LogOut size={19} />
               </button>
             </div>
 
-            {/* 第二行：可拖动的进度条（拖动时每 1% 震动一次） */}
+            {/* 第二行：滑块与提示语在**同一个气泡**里（拖动时每 1% 震动） */}
             <div className="tool-seek">
-              <button className="icon-btn sm" onClick={() => turn(-1)} title="上一页">
-                ◀
-              </button>
-              <div
-                className="reader-progress"
-                onPointerDown={onBarPointerDown}
-                title="长按后左右微调"
-              >
-                <i style={{ width: `${percentText(chapterRatio)}%` }} />
-                <span className="reader-progress-knob" style={{ left: `${percentText(chapterRatio)}%` }} />
+              <div className="tool-seek-row">
+                <button className="icon-btn sm" onClick={() => turn(-1)} title="上一页">
+                  <ChevronLeft size={17} />
+                </button>
+                <div
+                  className="reader-progress"
+                  onPointerDown={onBarPointerDown}
+                  title="长按后左右微调"
+                >
+                  <i style={{ width: `${percentText(chapterRatio)}%` }} />
+                  <span className="reader-progress-knob" style={{ left: `${percentText(chapterRatio)}%` }} />
+                </div>
+                <button className="icon-btn sm" onClick={() => turn(1)} title="下一页">
+                  <ChevronRight size={17} />
+                </button>
               </div>
-              <button className="icon-btn sm" onClick={() => turn(1)} title="下一页">
-                ▶
+              <div className="tool-seek-hint">长按后左右微调</div>
+            </div>
+
+            {/* 第三行：样式编辑 / 目录（各占一半，都带图标） */}
+            <div className="tool-row">
+              <button className="tool-bubble" onClick={() => setPanel('settings')}>
+                <Palette size={17} /> 样式编辑
+              </button>
+              <button className="tool-bubble" onClick={() => setPanel('toc')}>
+                <List size={17} /> 目录
               </button>
             </div>
-            <div className="tool-seek-hint">长按后左右微调</div>
+          </div>
+        </div>
+      ) : null}
 
-            <div className="tool-grid">
-              <button className="tool-btn" onClick={() => setPanel('toc')}>
-                目录
-              </button>
-              <button className="tool-btn" onClick={() => setPanel('settings')}>
-                排版
-              </button>
+      {panel === 'search' ? (
+        <div className="reader-panel">
+          <div className="reader-panel-head">
+            <span>搜索</span>
+            <button className="icon-btn sm" onClick={() => setPanel('none')}>
+              ✕
+            </button>
+          </div>
+          <div className="reader-panel-body">
+            <div className="setting-hint" style={{ padding: 12 }}>
+              全文搜索还没做（要先给全书建索引），下一轮补上。
             </div>
           </div>
         </div>

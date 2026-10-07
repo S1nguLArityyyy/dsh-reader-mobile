@@ -3340,21 +3340,40 @@
     bottom: calc(26px + env(safe-area-inset-bottom, 0px));
   }
 
-  /* 长按调节滑块：整行（◀ + 轨道 + ▶）用气泡包出来 */
+  /* 长按调节滑块：整行（◀ + 轨道 + ▶）与提示语都在这一个气泡里 */
   .tool-seek {
     padding: 12px;
     border: 1px solid rgba(255, 255, 255, 0.65);
     border-radius: 16px;
     background: var(--panel);
-    margin-bottom: 6px;
+    margin-bottom: 12px;
   }
 
-  /* 二级面板第二行的提示文字 */
+  .tool-seek-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* 提示语在气泡内部 */
   .tool-seek-hint {
-    margin: -2px 0 14px;
+    margin: 8px 0 0;
     text-align: center;
     font-size: 12px;
     color: var(--text-3);
+  }
+
+  /* 第三行：两等分，按钮撑满各自那一半（不再挤在一起） */
+  .tool-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 0;
+  }
+
+  .tool-row .tool-bubble {
+    width: 100%;
+    min-height: 56px;
   }
 
   /* 主页：分组区与上方卡片之间的间距（原来"单册书籍"那行快贴住卡片了） */
