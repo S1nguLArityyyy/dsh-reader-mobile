@@ -152,7 +152,7 @@ export async function backfillCoverColors(): Promise<number> {
   const books = await listBooks()
   let fixed = 0
   for (const book of books) {
-    if (book.coverColor || !book.cover) continue
+    if (!book.cover) continue // 注意：不再跳过"已有颜色"的书 ✓ 这样能覆盖旧算法算错的颜色 ✓
     const url = URL.createObjectURL(book.cover)
     const color = await dominantColor(url)
     URL.revokeObjectURL(url)
