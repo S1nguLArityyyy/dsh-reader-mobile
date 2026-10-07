@@ -188,10 +188,11 @@ export function SettingsPage() {
               <select
                 className="select"
                 value={syncSettings.provider}
-                onChange={(e) => patchSync({ provider: e.target.value as 'local' | 'webdav' })}
+                onChange={(e) => patchSync({ provider: e.target.value as 'local' | 'webdav' | 'baidu' })}
               >
                 <option value="local">本地文件夹</option>
                 <option value="webdav">WebDAV（坚果云等）</option>
+                <option value="baidu">百度网盘（应用内登录）</option>
               </select>
             </div>
           </div>
