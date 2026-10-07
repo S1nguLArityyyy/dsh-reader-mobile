@@ -2737,6 +2737,41 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  /* 阅读工具面板：底部条点一下浮出来（目录 / 排版 / 跳转返回） */
+  .reader-tools {
+    max-height: none;
+  }
+
+  .tool-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    padding: 4px 0;
+  }
+
+  .tool-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 52px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--panel-soft);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13.5px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .tool-btn:active {
+    background: var(--hover);
+  }
+
+  .tool-btn:disabled {
+    color: var(--text-4);
+    opacity: 0.6;
+  }
+
   .reader-chapter-switch .btn {
     min-height: 36px;
   }

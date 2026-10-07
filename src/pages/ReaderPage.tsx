@@ -21,7 +21,9 @@ export function ReaderPage() {
   const saveSettings = useApp((s) => s.saveSettings)
   const toast = useApp((s) => s.toast)
 
-  const [panel, setPanel] = useState<'none' | 'toc' | 'settings'>('none')
+  const [panel, setPanel] = useState<'none' | 'toc' | 'settings' | 'tools'>('none')
+  /** 跳转前的位置：点过目录/跳转后可以用「跳转返回」回来 */
+  const [lastPos, setLastPos] = useState<{ chapterIndex: number } | null>(null)
   const [ratio, setRatio] = useState(0)
   const [page, setPage] = useState(0)
   const [pages, setPages] = useState(1)
@@ -572,7 +574,10 @@ export function ReaderPage() {
       <div
         className="reader-foot"
         onClick={(e) => {
-          if (!(e.target as HTMLElement).closest('button')) setPanel('none')
+          const el = e.target as HTMLElement
+          // 点按钮或进度条本身不收起面板；点空白处则唤出/收起「阅读工具」
+          if (el.closest('button') || el.closest('.reader-progress')) return
+          setPanel(panel === 'none' ? 'tools' : 'none')
         }}
       >
         <button className="icon-btn sm" onClick={() => turn(-1)} title="上一页">
@@ -599,6 +604,39 @@ export function ReaderPage() {
         </button>
       </div>
 
+      {panel === 'tools' ? (
+        <div className="reader-panel reader-tools">
+          <div className="reader-panel-head">
+            <span>阅读工具</span>
+            <button className="icon-btn sm" onClick={() => setPanel('none')} title="收起">
+              ✕
+            </button>
+          </div>
+          <div className="reader-panel-body">
+            <div className="tool-grid">
+              <button className="tool-btn" onClick={() => setPanel('toc')}>
+                目录
+              </button>
+              <button className="tool-btn" onClick={() => setPanel('settings')}>
+                排版
+              </button>
+              <button
+                className="tool-btn"
+                disabled={!lastPos}
+                onClick={() => {
+                  if (!lastPos) return
+                  void goToChapter(lastPos.chapterIndex)
+                  setLastPos(null)
+                }}
+                title={lastPos ? '回到跳转前的位置' : '还没有跳转过'}
+              >
+                跳转返回
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {panel === 'toc' ? (
         <div className="reader-panel">
           <div className="reader-panel-head">
@@ -619,6 +657,8 @@ export function ReaderPage() {
                   className={`toc-item${entry.chapterIndex === chapterIndex ? ' active' : ''}`}
                   style={{ paddingLeft: 12 + entry.level * 14 }}
                   onClick={() => {
+                    // 记下跳转前的位置，方便用「跳转返回」回来
+                    setLastPos({ chapterIndex })
                     void goToChapter(entry.chapterIndex)
                     setPanel('none')
                   }}
