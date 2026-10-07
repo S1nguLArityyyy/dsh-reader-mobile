@@ -1,5 +1,5 @@
 import { fetchLanBook, listLanBooks } from '../data/lan'
-import {  AUTH_URL as baiduAuthUrl, accessToken as baiduToken, diagnose as baiduOpenDiagnose, readFile as baiduOpenReadFile, readJson as baiduOpenReadJson } from '../data/baidu-open'
+import { writeJson as baiduWriteJson, AUTH_URL as baiduAuthUrl, accessToken as baiduToken, diagnose as baiduOpenDiagnose, readFile as baiduOpenReadFile, readJson as baiduOpenReadJson } from '../data/baidu-open'
 import { unzipSync } from 'fflate'
 import { deleteBook, getBook, listBooks, putBook, type StoredBook } from '../data/db'
 import { readChapterFromZip } from '../data/epub'
@@ -477,6 +477,67 @@ async function downloadBaiduBooks(): Promise<SyncState> {
     total: keys.length
   })
 }
+/**
+ * 【只上传阅读记录】—— 进度 / 时长 / 设备 三类小 JSON ✓
+ *
+ * ★ 设计约束：路径被硬编码限定在 progress/ sessions/ devices/ 三个目录 ★
+ *   永远不会碰到 books/ ✓（书本只在电脑 → 手机方向流动 ✓）
+ *   所以这个函数在物理上不可能再造成"上传失败把书删了"的事故 ✓
+ *
+ * 数据量：一本书进度约 200 字节 ✓ 一天时长约 300 字节 ✓ 全部约 20~50KB ✓ 秒级完成 ✓
+ */
+async function uploadRecordsBaidu(): Promise<SyncState> {
+  const settings = readSettings()
+  const remote = '/' + String(settings.sync.remoteDir || 'DshReader').replace(/^\/+|\/+$/g, '')
+  if (!(await baiduToken())) return readSyncState()
+
+  const progress = readProgress()
+  const sessions = readSessions()
+  const deviceId = settings.deviceId || 'mobile'
+  const deviceName = settings.deviceName || '手机'
+
+  const jobs: Array<{ path: string; value: unknown }> = []
+  for (const [bookId, record] of Object.entries(progress)) {
+    jobs.push({ path: `${remote}/progress/${encodeURIComponent(bookId)}.json`, value: record })
+  }
+  for (const row of sessions) {
+    // 与桌面端一致的命名：<bookId>%01<日期>%01<设备id>.json ✓ 两端可互相识别 ✓
+    const name = `${encodeURIComponent(row.bookId)}%01${row.day}%01${encodeURIComponent(deviceId)}.json`
+    jobs.push({
+      path: `${remote}/sessions/${name}`,
+      value: { bookId: row.bookId, day: row.day, seconds: row.seconds, deviceId }
+    })
+  }
+  jobs.push({
+    path: `${remote}/devices/${encodeURIComponent(deviceId)}.json`,
+    value: { id: deviceId, name: deviceName, platform: 'android', lastSeenAt: Date.now() }
+  })
+
+  let done = 0
+  const failed: string[] = []
+  for (let index = 0; index < jobs.length; index += 1) {
+    const job = jobs[index]
+    writeSyncState({
+      phase: 'running',
+      message: `正在上传阅读记录 ${index + 1}/${jobs.length}`,
+      transferred: done,
+      total: jobs.length
+    })
+    const result = await baiduWriteJson(job.path, job.value)
+    if (result.ok) done += 1
+    else failed.push(`${job.path.split('/').pop() ?? ''}（${result.message.slice(0, 60)}）`)
+  }
+  return writeSyncState({
+    phase: 'idle',
+    message:
+      failed.length > 0
+        ? `阅读记录已上传 ${done}/${jobs.length}，失败 ${failed.length} 条：${failed.slice(0, 2).join('、')}`
+        : `阅读记录已上传 ${done} 条`,
+    loggedIn: true,
+    account: '百度网盘（已授权）',
+    lastSyncAt: Date.now()
+  })
+}
 /* ---------- 网盘同步：把本地进度/时长与云端合并（v1） ---------- */
 
 /** 把云端合并结果写回本地（进度取较新的、每日时长取较大值） */
@@ -670,7 +731,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.0.9',
+        version: '2.1.0',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -964,7 +1025,7 @@ export function createLocalApi(): unknown {
       },
       run: () =>
         // 百度网盘：立即同步先等同于「拉取云端书籍」（进度合并那套是 WebDAV 的文件格式，后续再统一）
-        readSettings().sync.provider === 'lan' ? downloadLanBooks() : readSettings().sync.provider === 'baidu' ? downloadBaiduBooks() : runSync(),
+        readSettings().sync.provider === 'lan' ? downloadLanBooks() : readSettings().sync.provider === 'baidu' ? downloadBaiduBooks().then(() => uploadRecordsBaidu()) : runSync(),
       cancel: async () => writeSyncState({ message: '已取消' }),
       downloadAll: () =>
           readSettings().sync.provider === 'lan' ? downloadLanBooks() : readSettings().sync.provider === 'baidu' ? downloadBaiduBooks() : downloadCloudBooks(),
