@@ -1,0 +1,6 @@
+tree ad3077a69f3dd78c00a59b2eb15bfa572dc275c3
+parent a9abecb6ae667af9c5e443bfbe2bd567a4e1841a
+author Dsh <dsh@localhost> 1791390248 +0800
+committer Dsh <dsh@localhost> 1791390248 +0800
+
+mobile 2.1.10: the records merge now reports the resulting local totals (progress count, in-progress count, today seconds) so a screenshot shows exactly what landed
