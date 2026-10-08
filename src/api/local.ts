@@ -683,7 +683,10 @@ function chineseToNumber(text: string): number | null {
 
 /** 从一段文本里取卷号：先找阿拉伯数字，再找中文数字 */
 function volumeFromTitle(title: string): string | null {
+  // 全角数字/句点先转半角：日文书名常写成「第１巻」，半角 \d 匹配不到
   const text = String(title ?? '')
+    .replace(/[０-９]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0))
+    .replace(/[．]/g, '.')
   const arabic = text.match(/\d+(?:\.\d+)?/g)
   if (arabic && arabic.length > 0) return arabic[arabic.length - 1]
   const chinese = text.match(/第?\s*([零一二两三四五六七八九十]+)\s*[卷巻册集篇]/)
