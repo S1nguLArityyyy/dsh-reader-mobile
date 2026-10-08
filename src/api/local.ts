@@ -639,7 +639,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.5.3',
+        version: '2.5.4',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -858,7 +858,8 @@ export function createLocalApi(): unknown {
             bookId: item.id,
             title: item.title,
             finished: item.finished,
-            percent: record?.percent ?? 0,
+            // 手动标记读完的：进度按 100% 显示（不动真实阅读位置，取消标记即可恢复）
+            percent: item.finished ? 1 : (record?.percent ?? 0),
             seconds: secondsByBook.get(item.id) ?? 0,
             lastAt: record?.updatedAt ?? 0
           }
