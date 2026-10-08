@@ -344,6 +344,19 @@ async function syncLanRecords(): Promise<{ ok: boolean; message: string }> {
       rev: Number(remote.rev ?? 1)
     }
     progressChanged += 1
+    // 收到的记录是权威的：读到 100% 就算读完，否则取消本机的手动标记
+    // （上一版只更新 progress、没动标记，而标记又优先显示 100%，所以看起来"没被覆盖"）
+    try {
+      const storedBook = await getBook(bookId)
+      if (storedBook) {
+        const remoteDone = Number(remote.percent ?? 0) >= 0.99
+        if ((storedBook.finished === true) !== remoteDone) {
+          await putBook({ ...storedBook, finished: remoteDone })
+        }
+      }
+    } catch {
+      /* IndexedDB 不可用就只更新进度 */
+    }
   }
   if (progressChanged > 0) writeProgress(local)
 
@@ -639,7 +652,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.5.4',
+        version: '2.5.5',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -907,7 +920,15 @@ export function createLocalApi(): unknown {
         return writeSyncState({ phase: 'idle', message: pushNote + result.message, lastSyncAt: Date.now() })
       },
       connect: async () => downloadLanBooks(),
-      run: () => syncLanRecords().then(() => downloadLanBooks()),
+      run: async () => {
+        // ★ 必须先推 ★ 否则手机这边的进度永远传不到电脑（之前 run 只拉不推）
+        await pushLanRecords(String(readSettings().sync.localCloudDir ?? ""), {
+          progress: readProgress() as unknown as Record<string, unknown>,
+          sessions: readSessions() as unknown as Array<Record<string, unknown>>
+        }).catch(() => ({ ok: false, message: "" }))
+        await syncLanRecords()
+        return downloadLanBooks()
+      },
       cancel: async () => writeSyncState({ message: '已取消' }),
       downloadAll: () => downloadLanBooks(),
       conflicts: async () => [],
