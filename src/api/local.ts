@@ -756,7 +756,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '196',
+        version: '197',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -1048,7 +1048,7 @@ export function createLocalApi(): unknown {
         // 记录合并的结果不要被下书的提示盖掉
         return writeSyncState({ ...bookState, message: `${merged.message}｜${String(bookState.message ?? "")}` })
       },
-      cancel: async () => writeSyncState({ message: '已取消' }),
+      cancel: async () => writeSyncState({ phase: 'idle', message: '已取消' }),
       downloadAll: () => downloadLanBooks(),
       conflicts: async () => lanConflicts,
       /** 用户裁决冲突：local = 以本机为准，cloud = 以电脑为准 */
