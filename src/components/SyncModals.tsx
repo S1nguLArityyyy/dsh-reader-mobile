@@ -13,6 +13,15 @@ export function SyncStatusModal() {
   const cancelSync = useApp((s) => s.cancelSync)
   const downloadAll = useApp((s) => s.downloadAll)
   const connectSync = useApp((s) => s.connectSync)
+  const loadSync = useApp((s) => s.loadSync)
+
+  // 面板开着时轮询状态：否则进度条和文案只在打开那一刻取一次快照，看起来像卡住不动
+  useEffect(() => {
+    if (!open) return
+    void loadSync()
+    const timer = setInterval(() => void loadSync(), 400)
+    return () => clearInterval(timer)
+  }, [open, loadSync])
 
   const total = sync.tasks.length
   const done = sync.tasks.filter((t) => t.status === 'done').length
