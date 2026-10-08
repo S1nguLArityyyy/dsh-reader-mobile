@@ -21,6 +21,7 @@ export interface LanBook {
   /** 电脑端给的原始文件名与书名，用于推导卷号；旧版服务端不提供 */
   title?: string | null
   originalName?: string | null
+  volume?: string | null
 }
 
 function normalizeBase(base: string): string {

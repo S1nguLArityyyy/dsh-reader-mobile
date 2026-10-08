@@ -18,6 +18,7 @@ export interface StoredBook {
   author: string
   description: string
   fileName: string
+  volume?: string | null
   fileSize: number
   cover: Blob | null
   coverExt: string | null

@@ -469,6 +469,7 @@ async function downloadLanBooks(): Promise<SyncState> {
           ...stored,
           title: item.title || stored.title,
           fileName: item.originalName || stored.fileName,
+          volume: item.volume ?? stored.volume,
           coverColor: item.color ?? stored.coverColor
         })
       }
@@ -567,7 +568,7 @@ function toImportedBook(book: StoredBook): Book {
     chapterCount: book.chapterHrefs.length,
     chapterChars: [],
     wordCount: book.wordCount,
-    volume: null,
+    volume: book.volume ?? null,
     seriesKey: null,
     manualSeries: null,
     addedAt: book.addedAt,
@@ -735,8 +736,7 @@ async function listAllBooks(): Promise<Book[]> {
         // 这两项必须显式带出来，否则会被上面的 ...builtIn 覆盖成默认值
         finished: item.finished === true,
         // 卷号按【文件名】推导：EPUB 内部书名常常是「第一巻」这类写法，拿它排不了序
-        volume:
-          saneVolume(looksLikeUuid(item.fileName ?? '') ? '' : item.fileName ?? '') ?? saneVolume(item.title),
+        volume: item.volume ?? saneVolume(looksLikeUuid(item.fileName ?? '') ? '' : item.fileName ?? '') ?? saneVolume(item.title),
         // 系列键保持 null：交给 groupBooks 的模糊匹配去归组（自己算会把它拆散）
         seriesKey: null
       })
@@ -755,7 +755,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '0.1',
+        version: '0.2',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
