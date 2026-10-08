@@ -811,6 +811,7 @@
 }
 
 .stat-unit {
+  white-space: nowrap;
   font-size: 13px;
   font-weight: 500;
   color: var(--text-2);
@@ -3634,6 +3635,24 @@
   /* 四列卡片在手机上放不下（会横向溢出被切掉）：详情统计改清单行，统计页概览改两列 */
   .stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* 计时卡片：手机两列时宽度紧张，数字与单位都不许折行，字号相应调小 */
+  .stat-value {
+    font-size: 19px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    gap: 1px;
+  }
+
+  .stat-value > span {
+    flex: 0 0 auto;
+  }
+
+  .stat-unit {
+    font-size: 11px;
+    white-space: nowrap;
+    margin-left: 2px;
   }
 
   /* 详情页的统计：标签在左、值在右，一行一条，保证显示完整
