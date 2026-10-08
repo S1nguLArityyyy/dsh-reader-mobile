@@ -92,7 +92,6 @@ export function LibraryPage() {
     () => (seriesFilter ? allGroups.filter((g) => g.key === seriesFilter) : allGroups),
     [allGroups, seriesFilter]
   )
-  const activeGroup = (allGroups ?? []).find((g) => g.key === seriesFilter)
 
   const continueBook = useMemo(() => {
     const list = sortBooks(books, 'recent')
@@ -287,7 +286,7 @@ export function LibraryPage() {
     <div className="page">
       <div className="page-head">
         <h1 className="page-title">
-          {query ? '搜索结果' : activeGroup ? activeGroup.title : '本地书库'}
+          本地书库
         </h1>
         <div className="head-actions">
           {/* 只同步阅读记录，不下载书，秒级完成 */}
