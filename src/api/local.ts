@@ -686,9 +686,9 @@ function volumeFromTitle(title: string): string | null {
   const text = String(title ?? '')
   const arabic = text.match(/\d+(?:\.\d+)?/g)
   if (arabic && arabic.length > 0) return arabic[arabic.length - 1]
-  const chinese = text.match(/[零一二两三四五六七八九十]+/g)
+  const chinese = text.match(/第?\s*([零一二两三四五六七八九十]+)\s*[卷巻册集篇]/)
   if (chinese && chinese.length > 0) {
-    const value = chineseToNumber(chinese[chinese.length - 1])
+    const value = chineseToNumber(chinese[1])
     if (value !== null) return String(value)
   }
   return null
