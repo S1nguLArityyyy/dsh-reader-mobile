@@ -144,6 +144,7 @@ function toBook(data: ExportedLibrary): Book {
     addedAt: Date.parse(data.exportedAt ?? '') || Date.now(),
     lastOpenedAt: null,
     hidden: false,
+    finished: false,
     syncUpload: false
   }
 }
@@ -518,6 +519,7 @@ function toImportedBook(book: StoredBook): Book {
     addedAt: book.addedAt,
     lastOpenedAt: null,
     hidden: false,
+    finished: book.finished === true,
     syncUpload: false
   }
 }
@@ -603,7 +605,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.5.1',
+        version: '2.5.2',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -699,7 +701,14 @@ export function createLocalApi(): unknown {
         // 返回【剩余书籍列表】以符合 store 的契约 ✓（之前返回 undefined ✗ 导致书库被置空 ✓）
         return undefined
       },
-      update: async () => undefined,
+      update: async (id: string, patch: Partial<Book>) => {
+        const stored = await getBook(id)
+        if (!stored) return undefined
+        const next: StoredBook = { ...stored }
+        if (typeof patch.finished === 'boolean') next.finished = patch.finished
+        await putBook(next)
+        return undefined
+      },
       markSyncUpload: async () => [],
       reveal: async () => false,
       onChanged: (callback: () => void) => {
@@ -832,15 +841,16 @@ export function createLocalApi(): unknown {
           secondsByBook.set(row.bookId, (secondsByBook.get(row.bookId) ?? 0) + row.seconds)
         }
 
-        const all: Array<{ id: string; title: string }> = [
-          { id: builtIn.id, title: builtIn.title },
-          ...stored.map((item) => ({ id: item.id, title: item.title }))
+        const all: Array<{ id: string; title: string; finished: boolean }> = [
+          { id: builtIn.id, title: builtIn.title, finished: builtIn.finished === true },
+          ...stored.map((item) => ({ id: item.id, title: item.title, finished: item.finished === true }))
         ]
         const books = all.map((item) => {
           const record = progressMap[item.id]
           return {
             bookId: item.id,
             title: item.title,
+            finished: item.finished,
             percent: record?.percent ?? 0,
             seconds: secondsByBook.get(item.id) ?? 0,
             lastAt: record?.updatedAt ?? 0
@@ -859,7 +869,7 @@ export function createLocalApi(): unknown {
         const todayRows = sessions.filter((row) => row.day === today)
         return {
           bookCount: all.length,
-          finishedCount: books.filter((item) => item.percent >= 0.99).length,
+          finishedCount: books.filter((item) => item.finished === true || item.percent >= 0.99).length,
           totalSeconds,
           averageSeconds: all.length > 0 ? Math.round(totalSeconds / all.length) : 0,
           books,

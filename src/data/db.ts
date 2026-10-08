@@ -31,6 +31,8 @@ export interface StoredBook {
   toc: TocNode[]
   wordCount: number
   addedAt: number
+  /** 用户手动标记为已读完 */
+  finished?: boolean
 }
 
 function openDb(): Promise<IDBDatabase> {

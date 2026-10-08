@@ -186,6 +186,8 @@ export interface BookStat {
   bookId: string
   seconds: number
   lastAt: number
+  /** 用户手动标记为已读完 */
+  finished?: boolean
   percent: number
 }
 

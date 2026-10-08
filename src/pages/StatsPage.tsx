@@ -122,7 +122,7 @@ export function StatsPage() {
   const rangeSeconds = rangeDays.reduce((total, day) => total + day.seconds, 0)
   const rangeBookIds = new Set(rangeDays.flatMap((day) => day.bookIds))
   const finishedInRange = (stats?.books ?? []).filter(
-    (item) => rangeBookIds.has(item.bookId) && item.percent >= 0.99
+    (item) => rangeBookIds.has(item.bookId) && (item.finished === true || item.percent >= 0.99)
   ).length
   const readingDays = rangeDays.filter((day) => day.seconds > 0).length
   const perReadingDay = readingDays > 0 ? rangeSeconds / readingDays : 0
