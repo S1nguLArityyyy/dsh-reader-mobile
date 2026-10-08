@@ -686,7 +686,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.6.0',
+        version: '2.6.1',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -967,14 +967,16 @@ export function createLocalApi(): unknown {
           progress: readProgress() as unknown as Record<string, unknown>,
           sessions: readSessions() as unknown as Array<Record<string, unknown>>
         }).catch(() => ({ ok: false, message: "" }))
-        await syncLanRecords()
+        const merged = await syncLanRecords()
         if (lanConflicts.length > 0) {
           return writeSyncState({
             phase: 'conflict',
             message: `发现 ${lanConflicts.length} 处进度冲突，请选择以哪边为准`
           })
         }
-        return downloadLanBooks()
+        const bookState = await downloadLanBooks()
+        // 记录合并的结果不要被下书的提示盖掉
+        return writeSyncState({ ...bookState, message: `${merged.message}｜${String(bookState.message ?? "")}` })
       },
       cancel: async () => writeSyncState({ message: '已取消' }),
       downloadAll: () => downloadLanBooks(),
