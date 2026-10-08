@@ -691,6 +691,15 @@ function looksLikeUuid(text: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(text ?? '').trim())
 }
 
+/** 卷号合理性校验：一册轻小说不会超过 200 卷，超出说明取到的是日期、ISBN 之类的长数字 */
+function saneVolume(text: string): string | null {
+  const value = volumeFromTitle(text)
+  if (!value) return null
+  const n = Number(value)
+  if (!Number.isFinite(n) || n <= 0 || n > 200) return null
+  return value
+}
+
 
 async function listAllBooks(): Promise<Book[]> {
   const builtIn = toBook(await loadLibrary())
@@ -715,9 +724,8 @@ async function listAllBooks(): Promise<Book[]> {
         // 这两项必须显式带出来，否则会被上面的 ...builtIn 覆盖成默认值
         finished: item.finished === true,
         // 卷号按【文件名】推导：EPUB 内部书名常常是「第一巻」这类写法，拿它排不了序
-        volume: volumeFromTitle(
-          looksLikeUuid(item.fileName ?? '') ? item.title : item.fileName || item.title
-        ),
+        volume:
+          saneVolume(looksLikeUuid(item.fileName ?? '') ? '' : item.fileName ?? '') ?? saneVolume(item.title),
         // 系列键保持 null：交给 groupBooks 的模糊匹配去归组（自己算会把它拆散）
         seriesKey: null
       })
