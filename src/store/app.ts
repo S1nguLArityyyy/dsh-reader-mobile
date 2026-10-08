@@ -548,7 +548,8 @@ export const useApp = create<AppStore>((set, get) => ({
         get().toast('info', sync.message ?? '发现阅读进度冲突，请选择保留哪一边')
         return
       }
-      if (sync.message) get().toast(sync.phase === 'error' ? 'error' : 'info', sync.message)
+      // 只有面板开着才弹提示，平时安静同步
+      if (sync.message && get().syncModalOpen) get().toast(sync.phase === 'error' ? 'error' : 'info', sync.message)
     } catch (err) {
       get().toast('error', `同步失败：${errorText(err)}`)
     }
@@ -599,7 +600,8 @@ export const useApp = create<AppStore>((set, get) => ({
       set({ sync, settings })
       await get().loadBooks()
       await get().loadStats()
-      if (sync.message) get().toast(sync.phase === 'error' ? 'error' : 'info', sync.message)
+      // 只有面板开着才弹提示，平时安静同步
+      if (sync.message && get().syncModalOpen) get().toast(sync.phase === 'error' ? 'error' : 'info', sync.message)
     } catch (err) {
       get().toast('error', errorText(err))
     }

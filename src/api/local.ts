@@ -701,7 +701,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.6.6',
+        version: '2.6.7',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',

@@ -94,7 +94,6 @@ function heatLevel(seconds: number): number {
 export function StatsPage() {
   const stats = useApp((s) => s.stats) ?? null
   const books = useApp((s) => s.books) ?? []
-  const openReader = useApp((s) => s.openReader)
 
   const today = new Date()
   const [cursor, setCursor] = useState({ year: today.getFullYear(), month: today.getMonth() })
@@ -258,7 +257,7 @@ export function StatsPage() {
               <span className="day-tag muted">这天没有读书</span>
             ) : (
               activeBooks.map((book) => (
-                <button key={book.id} className="day-tag" onClick={() => void openReader(book.id)}>
+                <button key={book.id} className="day-tag" type="button">
                   <i className="day-tag-bar" style={{ background: bookBarColor(book) }} />
                   <span>{book.title}</span>
                 </button>
