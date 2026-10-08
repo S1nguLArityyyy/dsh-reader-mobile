@@ -599,13 +599,47 @@ async function searchImported(
   }
   return out
 }
+/** 书架数据源：本机导入的书（IndexedDB）在前，内置书在后，并应用"隐藏"标记 */
+async function listAllBooks(): Promise<Book[]> {
+  const builtIn = toBook(await loadLibrary())
+  const stored: Book[] = []
+  try {
+    for (const item of await listBooks()) {
+      stored.push({
+        ...builtIn,
+        id: item.id,
+        title: item.title,
+        metaTitle: item.title,
+        author: item.author,
+        description: item.description,
+        fileName: item.fileName,
+        fileSize: item.fileSize,
+        coverFile: coverUrlOf(item),
+        coverColor: item.coverColor ?? null,
+        chapterCount: item.chapterHrefs.length,
+        chapterChars: [],
+        wordCount: item.wordCount,
+        addedAt: item.addedAt,
+        // 这两项必须显式带出来，否则会被上面的 ...builtIn 覆盖成默认值
+        finished: item.finished === true,
+        seriesKey: null
+      })
+    }
+  } catch {
+    /* IndexedDB 不可用就只显示内置书 */
+  }
+  const hidden = readHidden()
+  const list = builtIn.title ? [...stored, builtIn] : [...stored]
+  return list.filter((book) => !hidden.includes(book.id))
+}
+
 export function createLocalApi(): unknown {
   const listeners = new Set<() => void>()
 
   return {
     app: {
       info: async () => ({
-        version: '2.5.2',
+        version: '2.5.3',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -637,38 +671,7 @@ export function createLocalApi(): unknown {
     },
 
     library: {
-      list: async () => {
-        // 本机导入的书（IndexedDB）在前，内置示例书在后
-        const builtIn = toBook(await loadLibrary())
-        const stored: Book[] = []
-        try {
-          for (const item of await listBooks()) {
-            stored.push({
-              ...builtIn,
-              id: item.id,
-              title: item.title,
-              metaTitle: item.title,
-              author: item.author,
-              description: item.description,
-              fileName: item.fileName,
-              fileSize: item.fileSize,
-              coverFile: coverUrlOf(item),
-              coverColor: item.coverColor ?? null,
-              chapterCount: item.chapterHrefs.length,
-              chapterChars: [],
-              wordCount: item.wordCount,
-              addedAt: item.addedAt,
-              seriesKey: null
-            })
-          }
-        } catch {
-          /* IndexedDB 不可用就只显示内置书 */
-        }
-        const hidden = readHidden()
-        // 内置示例书已经不再打包；万一有，也尊重"隐藏"标记
-        const list = builtIn.title ? [...stored, builtIn] : [...stored]
-        return list.filter((book) => !hidden.includes(book.id))
-      },
+      list: () => listAllBooks(),
       importDialog: () => importFiles(),
       importFolderDialog: () => importFiles(),
       importPaths: async () => ({ books: [], errors: [] }),
@@ -702,12 +705,16 @@ export function createLocalApi(): unknown {
         return undefined
       },
       update: async (id: string, patch: Partial<Book>) => {
+        // 标记读完/未读完等本机字段：写回 IndexedDB ✓
         const stored = await getBook(id)
-        if (!stored) return undefined
-        const next: StoredBook = { ...stored }
-        if (typeof patch.finished === 'boolean') next.finished = patch.finished
-        await putBook(next)
-        return undefined
+        if (stored) {
+          const next: StoredBook = { ...stored }
+          if (typeof patch.finished === "boolean") next.finished = patch.finished
+          await putBook(next)
+        }
+        // ★ 必须返回完整书库列表 ★  store 里是 set({ books }) ✓
+        //   之前返回 undefined 会把书架置空（表现为"书全部隐藏"）✓
+        return listAllBooks()
       },
       markSyncUpload: async () => [],
       reveal: async () => false,

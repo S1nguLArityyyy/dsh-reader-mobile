@@ -452,7 +452,8 @@ export const useApp = create<AppStore>((set, get) => ({
   async updateBook(id, patch) {
     try {
       const books = await window.api.library.update(id, patch)
-      set({ books })
+      if (Array.isArray(books)) set({ books })
+      else await get().loadBooks()
     } catch (err) {
       get().toast('error', `更新失败：${errorText(err)}`)
     }
