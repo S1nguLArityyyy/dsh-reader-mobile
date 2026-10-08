@@ -62,7 +62,11 @@ export async function listLanBooks(base: string, haveHashes: string[] = []): Pro
         name: String(item.name ?? ''),
         size: Number(item.size ?? 0),
         color: typeof item.color === 'string' && item.color ? item.color : null,
-        hash: typeof item.hash === 'string' && item.hash ? item.hash : null
+        hash: typeof item.hash === 'string' && item.hash ? item.hash : null,
+        // 电脑端给的元信息：书名、原始文件名、卷号（这里是白名单映射，漏一个就传不到下游）
+        title: typeof item.title === 'string' && item.title ? item.title : null,
+        originalName: typeof item.originalName === 'string' && item.originalName ? item.originalName : null,
+        volume: item.volume === null || item.volume === undefined ? null : String(item.volume)
       }))
       .filter((item) => item.name.length > 0)
     return { ok: true, books, message: `电脑上有 ${books.length} 本书` }
