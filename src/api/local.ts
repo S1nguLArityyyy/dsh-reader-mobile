@@ -341,6 +341,8 @@ async function syncLanRecords(): Promise<{ ok: boolean; message: string }> {
   const local = readProgress()
   const lastSyncAt = Number(readSyncState().lastSyncAt ?? 0)
   let progressChanged = 0
+  let skippedOlder = 0
+  const remoteCount = Object.keys(pulled.progress).length
   lanConflicts = []
   lanRemoteProgress = {}
   for (const [rawId, remote] of Object.entries(pulled.progress)) {
@@ -367,7 +369,10 @@ async function syncLanRecords(): Promise<{ ok: boolean; message: string }> {
       continue
     }
 
-    if (remoteAt <= mineAt) continue
+    if (remoteAt <= mineAt) {
+      skippedOlder += 1
+      continue
+    }
     local[bookId] = {
       bookId,
       percent: Number(remote.percent ?? 0),
@@ -424,7 +429,7 @@ async function syncLanRecords(): Promise<{ ok: boolean; message: string }> {
   return {
     ok: true,
     message:
-      `已合并电脑记录：进度 +${progressChanged} · 时长 +${secondsChanged}` +
+      `已合并电脑记录：进度 +${progressChanged}（电脑端给了 ${remoteCount} 条，其中 ${skippedOlder} 条比本机旧被跳过）· 时长 +${secondsChanged}` +
       `｜本机：进度 ${Object.keys(finalProgress).length} 条（在读 ${inProgress}）· 今日 ${Math.floor(todaySeconds / 60)} 分 ${todaySeconds % 60} 秒`
   }
 }
@@ -686,7 +691,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.6.2',
+        version: '2.6.3',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -950,7 +955,7 @@ export function createLocalApi(): unknown {
           sessions: readSessions() as unknown as Array<Record<string, unknown>>
         }).catch(() => ({ ok: false, message: '' }))
         const result = await syncLanRecords()
-        const pushNote = pushed.ok ? pushed.message + '｜' : ''
+        const pushNote = pushed.ok ? pushed.message + '｜' : '推给电脑失败｜'
         if (lanConflicts.length > 0) {
           // 有冲突就不推进 lastSyncAt，等用户裁决完再说
           return writeSyncState({
