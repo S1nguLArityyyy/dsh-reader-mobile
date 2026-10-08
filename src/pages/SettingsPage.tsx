@@ -1,14 +1,11 @@
-import { useState } from 'react'
-import { exchangeCode as baiduExchangeCode } from '../data/baidu-open'
+import {} from 'react'
 import {
-  Cloud,
   FolderOpen,
   HardDrive,
   Image as ImageIcon,
   Info,
   Palette,
   Plus,
-  RefreshCw
 } from 'lucide-react'
 import { useApp } from '../store/app'
 import { SegmentedControl, Slider, Switch } from '../components/ui'
@@ -22,23 +19,14 @@ export function SettingsPage() {
   const saveSettings = useApp((s) => s.saveSettings)
   const refreshAll = useApp((s) => s.refreshAll)
   const setSyncModal = useApp((s) => s.setSyncModal)
-  const connectSync = useApp((s) => s.connectSync)
-  const configureWebdav = useApp((s) => s.configureWebdav)
-  const logoutSync = useApp((s) => s.logoutSync)
+  const runSync = useApp((s) => s.runSync)
   const toast = useApp((s) => s.toast)
 
-  const [nameDraft, setNameDraft] = useState<string | null>(null)
-  // WebDAV 表单：null = 跟随设置（密码不回传，所以永远从空开始）
-  const [davDraft, setDavDraft] = useState<{ url: string; username: string; password: string } | null>(null)
-  const [baiduCode, setBaiduCode] = useState('')
-  const [baiduMsg, setBaiduMsg] = useState('')
-  const [davBusy, setDavBusy] = useState(false)
 
   if (!settings) return <div className="page" />
 
   const syncSettings = settings.sync
   const appearance = settings.appearance
-  const dav = davDraft ?? { url: syncSettings.webdav.url, username: syncSettings.webdav.username, password: '' }
 
   const patchSync = (patch: Partial<typeof syncSettings>): void => {
     void saveSettings({ sync: { ...syncSettings, ...patch } })
@@ -165,8 +153,6 @@ export function SettingsPage() {
           </div>
         </section>
 
-        {/* ---------- 网盘同步 ---------- */}
-        <section className="setting-card">
         {/* ---------- 阅读 ---------- */}
         <section className="setting-card">
           <h3>阅读</h3>
@@ -189,237 +175,53 @@ export function SettingsPage() {
           </div>
         </section>
 
+        {/* ---------- 局域网同步 ---------- */}
+        <section className="setting-card">
           <h3>
-            <Cloud size={15} style={{ verticalAlign: -2, marginRight: 6 }} />
-            网盘同步
+            局域网同步
           </h3>
           <div className="setting-hint">
-            把阅读进度与阅读时长同步到「云端」，两端读写同一批文件。
-            本地文件夹适合单机或局域网（把目录指向共享盘）；WebDAV 适合两台设备隔着网络同步
-            （坚果云等，填地址 + 账号 + 应用密码即可，不需要内嵌登录）。
+            手机和电脑连同一个 WiFi 时，直接通过局域网交换阅读记录和书籍，不经过任何网盘。
           </div>
 
           <div className="setting-row">
             <div>
-              <div className="setting-label">云端类型</div>
-              <div className="setting-desc">切换后云端目录各自独立，互不影响</div>
-            </div>
-            <div className="setting-control">
-              <select
-                className="select"
-                value={syncSettings.provider}
-                onChange={(e) => patchSync({ provider: e.target.value as 'local' | 'webdav' | 'baidu' | 'lan' })}
-              >
-                <option value="local">本地文件夹</option>
-                <option value="webdav">WebDAV（坚果云等）</option>
-                <option value="baidu">百度网盘（应用内登录）</option>
-                <option value="lan">局域网直传（同一 WiFi，最快）</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="setting-row">
-            <div>
-              <div className="setting-label">连接状态</div>
-              <div className="setting-desc">
-                {sync.loggedIn
-                  ? `已连接：${sync.account ?? ''}`
-                  : syncSettings.provider === 'webdav'
-                    ? '尚未连接：填写下面的地址、账号、应用密码后点「保存并连接」'
-                    : syncSettings.provider === 'baidu'
-                      ? '尚未连接：点「连接」跳到百度登录页，登录完按返回键回到 App，再点一次「连接」'
-                      : '尚未连接：先选一个目录作为云端'}
-              </div>
-            </div>
-            <div className="setting-control">
-              <span className={`sync-dot${sync.loggedIn ? ' on' : ''}`} />
-              {syncSettings.provider === 'baidu' ? (
-                <>
-                  <input
-                    className="input"
-                    style={{ width: 210 }}
-                    placeholder="粘贴授权页上的 32 位授权码"
-                    value={baiduCode}
-                    onChange={(e) => setBaiduCode(e.target.value)}
-                  />
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => {
-                      setBaiduMsg('换取中…')
-                      void baiduExchangeCode(baiduCode).then((result) => {
-                        setBaiduMsg(result.message)
-                        if (result.ok) {
-                          setBaiduCode('')
-                          void connectSync()
-                        }
-                      })
-                    }}
-                  >
-                    保存授权码
-                  </button>
-                  {baiduMsg ? (
-                    <span className="setting-hint" style={{ fontSize: 12, maxWidth: 240 }}>
-                      {baiduMsg}
-                    </span>
-                  ) : null}
-                  {sync.loggedIn ? (
-                    <button className="btn btn-ghost btn-sm" onClick={() => void logoutSync()}>
-                      退出登录
-                    </button>
-                  ) : null}
-                </>
-              ) : null}
-          {syncSettings.provider === 'lan' ? (
-            <div className="setting-row">
-              <div>
-                <div className="setting-label">电脑地址</div>
-                <div className="setting-desc">
-                  电脑端打开后会自动启动服务（端口 8787），形如 http://192.168.0.102:8787（手机需与电脑同一 WiFi）
-                </div>
-              </div>
-              <div className="setting-control">
-                <input
-                  className="input"
-                  style={{ width: 230 }}
-                  placeholder="http://192.168.0.102:8787"
-                  value={syncSettings.localCloudDir ?? ''}
-                  onChange={(e) => patchSync({ localCloudDir: e.target.value })}
-                />
-              </div>
-            </div>
-          ) : null}
-              {syncSettings.provider === 'webdav' ? (
-                <button className="btn btn-ghost btn-sm" onClick={() => void logoutSync()}>
-                  退出登录
-                </button>
-              ) : (
-                <button className="btn btn-ghost btn-sm" onClick={() => void connectSync()}>
-                  {sync.loggedIn ? (syncSettings.provider === 'baidu' ? '重新连接' : '更换目录') : '连接'}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {syncSettings.provider === 'webdav' ? (
-            <>
-              <div className="setting-row">
-                <div>
-                  <div className="setting-label">服务器地址</div>
-                  <div className="setting-desc">坚果云：https://dav.jianguoyun.com/dav/</div>
-                </div>
-                <div className="setting-control">
-                  <input
-                    className="input"
-                    style={{ width: 250 }}
-                    placeholder="https://dav.example.com/dav/"
-                    value={dav.url}
-                    onChange={(e) => setDavDraft({ ...dav, url: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="setting-row">
-                <div>
-                  <div className="setting-label">账号</div>
-                  <div className="setting-desc">网盘的登录邮箱（坚果云用注册邮箱）</div>
-                </div>
-                <div className="setting-control">
-                  <input
-                    className="input"
-                    style={{ width: 250 }}
-                    value={dav.username}
-                    onChange={(e) => setDavDraft({ ...dav, username: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="setting-row">
-                <div>
-                  <div className="setting-label">应用密码</div>
-                  <div className="setting-desc">
-                    不是登录密码：坚果云在网页版「账户信息 → 安全选项 → 添加应用」生成。
-                    存进系统凭据加密，已保存过就留空
-                  </div>
-                </div>
-                <div className="setting-control">
-                  <input
-                    className="input"
-                    style={{ width: 250 }}
-                    type="password"
-                    placeholder="留空则沿用已保存的"
-                    value={dav.password}
-                    onChange={(e) => setDavDraft({ ...dav, password: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="setting-row">
-                <div>
-                  <div className="setting-label">保存并连接</div>
-                  <div className="setting-desc">会先验证一次地址与密码，然后立刻跑一轮同步</div>
-                </div>
-                <div className="setting-control">
-                  <button
-                    className="btn btn-primary btn-sm"
-                    disabled={davBusy}
-                    onClick={() => {
-                      setDavBusy(true)
-                      void configureWebdav({ url: dav.url, username: dav.username, password: dav.password }).finally(
-                        () => {
-                          setDavBusy(false)
-                          setDavDraft(null)
-                        }
-                      )
-                    }}
-                  >
-                    {davBusy ? '连接中…' : '保存并连接'}
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : null}
-
-          <div className="setting-row">
-            <div>
-              <div className="setting-label">云端同步文件夹</div>
-              <div className="setting-desc">在云端目录下使用哪个子文件夹；不存在时自动创建</div>
+              <div className="setting-label">电脑地址</div>
+              <div className="setting-desc">电脑端设置里显示的地址，例如 http://192.168.0.102:8787</div>
             </div>
             <div className="setting-control">
               <input
                 className="input"
-                value={nameDraft ?? syncSettings.remoteDir}
-                onChange={(e) => setNameDraft(e.target.value)}
-                onBlur={() => {
-                  if (nameDraft !== null && nameDraft.trim()) patchSync({ remoteDir: nameDraft.trim() })
-                  setNameDraft(null)
-                }}
+                style={{ width: 230 }}
+                placeholder="http://192.168.0.102:8787"
+                value={syncSettings.localCloudDir ?? ''}
+                onChange={(e) => patchSync({ localCloudDir: e.target.value })}
               />
+            </div>
+          </div>
+
+          <div className="setting-row">
+            <div>
+              <div className="setting-label">同步状态</div>
+              <div className="setting-desc">{sync.message || '还没有同步过'}</div>
+            </div>
+            <div className="setting-control">
+              <button className="btn btn-ghost btn-sm" onClick={() => void runSync()}>
+                立即同步
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setSyncModal(true)}>
+                同步面板
+              </button>
             </div>
           </div>
 
           <div className="setting-row">
             <div>
               <div className="setting-label">自动同步</div>
-              <div className="setting-desc">启动后同步一次，并按间隔定时同步</div>
+              <div className="setting-desc">打开应用后同步一次，之后按间隔定时同步</div>
             </div>
             <div className="setting-control">
               <Switch checked={syncSettings.auto} onChange={(v) => patchSync({ auto: v })} />
-            </div>
-          </div>
-
-          <div className="setting-row">
-            <div>
-              <div className="setting-label">退出阅读时同步</div>
-              <div className="setting-desc">
-                合上书立刻把进度与阅读时长推上云端；退出应用前也会同步一次。
-                网络失败不影响阅读，下次会自动补上
-              </div>
-            </div>
-            <div className="setting-control">
-              <Switch
-                checked={syncSettings.onReaderClose}
-                onChange={(v) => patchSync({ onReaderClose: v })}
-              />
             </div>
           </div>
 
@@ -430,14 +232,15 @@ export function SettingsPage() {
             </div>
             <div className="setting-control">
               <select
-                className="select"
+                className="input"
+                style={{ width: 120 }}
                 disabled={!syncSettings.auto}
                 value={syncSettings.intervalMinutes}
                 onChange={(e) => patchSync({ intervalMinutes: Number(e.target.value) })}
               >
-                {[5, 10, 30, 60].map((m) => (
+                {[5, 10, 15, 30, 60, 120].map((m) => (
                   <option key={m} value={m}>
-                    每 {m} 分钟
+                    {m} 分钟
                   </option>
                 ))}
               </select>
@@ -446,41 +249,8 @@ export function SettingsPage() {
 
           <div className="setting-row">
             <div>
-              <div className="setting-label">冲突处理</div>
-              <div className="setting-desc">同一本书两端都有新进度时的默认行为</div>
-            </div>
-            <div className="setting-control">
-              <select
-                className="select"
-                value={syncSettings.conflictPolicy}
-                onChange={(e) => patchSync({ conflictPolicy: e.target.value as 'ask' | 'local' | 'cloud' })}
-              >
-                <option value="ask">总是询问我</option>
-                <option value="local">优先本地</option>
-                <option value="cloud">优先云端</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="setting-row">
-            <div>
-              <div className="setting-label">同步书籍文件</div>
-              <div className="setting-desc">
-                打开后，书库里勾了「同步到云端」的书会在同步时上传（单本上限 100MB）。
-                云端已有同一份会跳过，不会重复传
-              </div>
-            </div>
-            <div className="setting-control">
-              <Switch checked={syncSettings.uploadBooks} onChange={(v) => patchSync({ uploadBooks: v })} />
-            </div>
-          </div>
-
-          <div className="setting-row">
-            <div>
-              <div className="setting-label">自动下载云端新书</div>
-              <div className="setting-desc">
-                关着的时候只提示「云端有 N 本可下载」，由你在同步面板点「全部下载云端书籍」
-              </div>
+              <div className="setting-label">自动下载电脑新书</div>
+              <div className="setting-desc">打开后同步时自动把电脑上有、手机没有的书拉过来</div>
             </div>
             <div className="setting-control">
               <Switch
@@ -489,21 +259,6 @@ export function SettingsPage() {
               />
             </div>
           </div>
-
-
-          <div className="setting-row">
-            <div>
-              <div className="setting-label">立即操作</div>
-              <div className="setting-desc">打开同步状态面板，查看任务、进度与冲突</div>
-            </div>
-            <div className="setting-control">
-              <button className="btn btn-primary btn-sm" onClick={() => setSyncModal(true)}>
-                <RefreshCw size={14} />
-                立即同步
-              </button>
-            </div>
-          </div>
-
         </section>
 
         {/* ---------- 数据与存储 ---------- */}
