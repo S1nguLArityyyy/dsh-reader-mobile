@@ -652,6 +652,20 @@ async function searchImported(
   return out
 }
 /** 书架数据源：本机导入的书（IndexedDB）在前，内置书在后，并应用"隐藏"标记 */
+/** 从书名里取卷号：败北女角太多了！08.5 → 8.5（取最后一个数字） */
+function volumeFromTitle(title: string): string | null {
+  const matches = String(title ?? '').match(/\d+(?:\.\d+)?/g)
+  if (!matches || matches.length === 0) return null
+  return matches[matches.length - 1]
+}
+
+/** 去掉末尾卷号当系列键：败北女角太多了！08 → 败北女角太多了！ */
+function seriesKeyFromTitle(title: string): string | null {
+  const text = String(title ?? '').trim()
+  const stripped = text.replace(/[\s·・\-—_]*\d+(?:\.\d+)?\s*(?:卷|册|集|话)?\s*$/, '').trim()
+  return stripped && stripped !== text ? stripped : null
+}
+
 async function listAllBooks(): Promise<Book[]> {
   const builtIn = toBook(await loadLibrary())
   const stored: Book[] = []
@@ -674,7 +688,8 @@ async function listAllBooks(): Promise<Book[]> {
         addedAt: item.addedAt,
         // 这两项必须显式带出来，否则会被上面的 ...builtIn 覆盖成默认值
         finished: item.finished === true,
-        seriesKey: null
+        volume: volumeFromTitle(item.title),
+        seriesKey: seriesKeyFromTitle(item.title)
       })
     }
   } catch {
@@ -691,7 +706,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.6.4',
+        version: '2.6.5',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
