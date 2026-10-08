@@ -167,6 +167,28 @@ export function SettingsPage() {
 
         {/* ---------- 网盘同步 ---------- */}
         <section className="setting-card">
+        {/* ---------- 阅读 ---------- */}
+        <section className="setting-card">
+          <h3>阅读</h3>
+          <div className="setting-row">
+            <div>
+              <div className="setting-label">自动跳过封面</div>
+              <div className="setting-desc">
+                打开后，第一次打开一本书会自动跳到正文第一章（跳过封面与目录）。
+                默认关闭 —— 从第 1 页开始，封面也能看到
+              </div>
+            </div>
+            <div className="setting-control">
+              <Switch
+                checked={settings?.reader?.skipFrontMatter === true}
+                onChange={(v) =>
+                  void saveSettings({ reader: { ...(settings?.reader ?? {}), skipFrontMatter: v } } as never)
+                }
+              />
+            </div>
+          </div>
+        </section>
+
           <h3>
             <Cloud size={15} style={{ verticalAlign: -2, marginRight: 6 }} />
             网盘同步

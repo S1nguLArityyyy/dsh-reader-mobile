@@ -97,7 +97,9 @@ function errorText(err: unknown): string {
  * 旧实现会挑"第一个像正文的条目" ✗ 于是一本没开过的书默认停在第十章左右（用户反馈）✓
  * 现在保守：只有明确是封面/目录/版权这类非正文条目才往后跳 ✓ 其余一律第 0 章 ✓
  */
-function pickStartChapter(payload: { toc: { label: string; chapterIndex: number }[] }): number {
+function pickStartChapter(payload: { toc: { label: string; chapterIndex: number }[] }, skipFrontMatter: boolean): number {
+  // 开关关着（默认）→ 一律从第 1 页开始，封面/扉页都能看到
+  if (!skipFrontMatter) return 0
   const skip = /^(封面|书名|目录|目次|版权|扉页|插页|广告|contents?|cover|title)/i
   for (const item of payload.toc ?? []) {
     const label = String(item.label ?? "").trim()
@@ -470,7 +472,7 @@ export const useApp = create<AppStore>((set, get) => ({
     try {
       const payload = await window.api.reader.open(bookId)
       // 没有历史进度时，跳过封面/制作页，从正文第一项开始
-      const startIndex = payload.progress?.chapterIndex ?? pickStartChapter(payload)
+      const startIndex = payload.progress?.chapterIndex ?? pickStartChapter(payload, get().settings?.reader?.skipFrontMatter === true)
       set({
         reader: {
           bookId,

@@ -88,6 +88,8 @@ export interface ReaderSettings {
   pagedPageWidth?: number
   pagedPadding?: number
   theme: ReaderTheme
+  /** 新书自动跳过封面/目录，直接从正文第一页开始（默认关，从第 1 页读起） */
+  skipFrontMatter?: boolean
   mode: 'scroll' | 'paged'
 }
 

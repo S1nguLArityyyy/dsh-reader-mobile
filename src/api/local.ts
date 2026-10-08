@@ -267,6 +267,8 @@ function defaultSettings(): Settings {
       mode: 'scroll',
       // 这个字段漏过：设置页要按 theme 查阅读主题色，查不到就 undefined.bg 崩掉（整页卡死）
       theme: 'paper'
+      ,
+      skipFrontMatter: false
     },
     appearance: {
       accent: '#3b6fd4',
@@ -812,7 +814,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.4.0',
+        version: '2.4.1',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
