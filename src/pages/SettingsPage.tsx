@@ -188,7 +188,7 @@ export function SettingsPage() {
           <div className="setting-row">
             <div>
               <div className="setting-label">电脑地址</div>
-              <div className="setting-desc">电脑端设置里显示的地址，例如 http://192.168.0.102:8787</div>
+              <div className="setting-desc">电脑端侧边栏左下角或「设置 - 局域网服务」里显示的地址，形如 http://192.168.0.102:8787。看不到时在电脑上执行 ipconfig，取当前上网网卡的 IPv4 地址，后面加 :8787。手机与电脑必须在同一个 WiFi 下</div>
             </div>
             <div className="setting-control">
               <input
