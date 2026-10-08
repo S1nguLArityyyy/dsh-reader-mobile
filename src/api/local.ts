@@ -442,6 +442,8 @@ async function downloadLanBooks(): Promise<SyncState> {
   const have = new Set((await listBooks()).map((item) => item.id))
   let done = 0
   const failed: string[] = []
+  let gotVolume = 0
+  let gotName = 0
   for (let index = 0; index < listed.books.length; index += 1) {
     const item = listed.books[index]
     const title = item.name.replace(/\.epub$/i, '')
@@ -459,33 +461,32 @@ async function downloadLanBooks(): Promise<SyncState> {
       failed.push(title)
       continue
     }
-    // 用电脑端的原始文件名，不要把 uuid 存进来
-    const result = await importEpubBytes(bytes, item.originalName || item.name)
-    // 沿用电脑端算好的主色 ✓（一个像素都不算 ✓ 两端必然一致 ✓）
-    if (result.book) {
-      const stored = await getBook(result.book.id)
-      if (stored) {
-        await putBook({
-          ...stored,
-          title: item.title || stored.title,
-          fileName: item.originalName || stored.fileName,
-          volume: item.volume ?? stored.volume,
-          coverColor: item.color ?? stored.coverColor
-        })
-      }
-    }
-    if (result.book) {
-      if (!have.has(result.book.id)) done += 1
-    } else {
-      failed.push(`${title}（${result.error ?? '解析失败'}）`)
-    }
+// 下载完直接用电脑端给的元信息写库：书名、原始文件名、卷号都以电脑端为准
+const result = await importEpubBytes(bytes, item.originalName || item.name)
+if (result.book) {
+  const stored = await getBook(result.book.id)
+  if (stored) {
+    await putBook({
+      ...stored,
+      title: item.title || stored.title,
+      fileName: item.originalName || stored.fileName,
+      volume: item.volume ?? stored.volume,
+      coverColor: item.color ?? stored.coverColor
+    })
+    if (item.volume) gotVolume += 1
+    if (item.originalName) gotName += 1
+  }
+  if (!have.has(result.book.id)) done += 1
+} else {
+  failed.push(`${title}（${result.error ?? '解析失败'}）`)
+}
   }
   return writeSyncState({
     phase: 'idle',
     message:
       failed.length > 0
-        ? `局域网：已接收 ${done} 本，失败 ${failed.length} 本：${failed.slice(0, 3).join('、')}`
-        : `局域网：已接收 ${done} 本`,
+        ? `局域网：接收 ${done} 本（卷号 ${gotVolume} / 原名 ${gotName}），失败 ${failed.length} 本：${failed.slice(0, 3).join('、')}`
+        : `局域网：接收 ${done} 本（卷号 ${gotVolume} / 原名 ${gotName}）`,
     loggedIn: true,
     account: `局域网 · ${base}`,
     lastSyncAt: Date.now(),
@@ -755,7 +756,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '193',
+        version: '194',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
