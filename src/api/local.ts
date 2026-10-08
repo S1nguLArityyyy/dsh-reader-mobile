@@ -647,10 +647,48 @@ async function searchImported(
 }
 /** 书架数据源：本机导入的书（IndexedDB）在前，内置书在后，并应用"隐藏"标记 */
 /** 从书名里取卷号：败北女角太多了！08.5 → 8.5（取最后一个数字） */
+/** 中文数字转阿拉伯数字，支持 一 到 一百 的常见写法 */
+function chineseToNumber(text: string): number | null {
+  const digits: Record<string, number> = {
+    零: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9
+  }
+  if (!text) return null
+  if (text === '十') return 10
+  const tenAt = text.indexOf('十')
+  if (tenAt < 0) {
+    let value = 0
+    for (const ch of text) {
+      const d = digits[ch]
+      if (d === undefined) return null
+      value = value * 10 + d
+    }
+    return value
+  }
+  const head = text.slice(0, tenAt)
+  const tail = text.slice(tenAt + 1)
+  const tens = head ? (digits[head] ?? null) : 1
+  if (tens === null) return null
+  const ones = tail ? (digits[tail] ?? null) : 0
+  if (ones === null) return null
+  return tens * 10 + ones
+}
+
+/** 从一段文本里取卷号：先找阿拉伯数字，再找中文数字 */
 function volumeFromTitle(title: string): string | null {
-  const matches = String(title ?? '').match(/\d+(?:\.\d+)?/g)
-  if (!matches || matches.length === 0) return null
-  return matches[matches.length - 1]
+  const text = String(title ?? '')
+  const arabic = text.match(/\d+(?:\.\d+)?/g)
+  if (arabic && arabic.length > 0) return arabic[arabic.length - 1]
+  const chinese = text.match(/[零一二两三四五六七八九十]+/g)
+  if (chinese && chinese.length > 0) {
+    const value = chineseToNumber(chinese[chinese.length - 1])
+    if (value !== null) return String(value)
+  }
+  return null
+}
+
+/** 文件名是同步过来时生成的 uuid，里面没有卷号信息，这种情况改用书名 */
+function looksLikeUuid(text: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(text ?? '').trim())
 }
 
 
@@ -677,7 +715,9 @@ async function listAllBooks(): Promise<Book[]> {
         // 这两项必须显式带出来，否则会被上面的 ...builtIn 覆盖成默认值
         finished: item.finished === true,
         // 卷号按【文件名】推导：EPUB 内部书名常常是「第一巻」这类写法，拿它排不了序
-        volume: volumeFromTitle(item.fileName || item.title),
+        volume: volumeFromTitle(
+          looksLikeUuid(item.fileName ?? '') ? item.title : item.fileName || item.title
+        ),
         // 系列键保持 null：交给 groupBooks 的模糊匹配去归组（自己算会把它拆散）
         seriesKey: null
       })
