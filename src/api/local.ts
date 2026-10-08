@@ -676,7 +676,8 @@ async function listAllBooks(): Promise<Book[]> {
         addedAt: item.addedAt,
         // 这两项必须显式带出来，否则会被上面的 ...builtIn 覆盖成默认值
         finished: item.finished === true,
-        volume: volumeFromTitle(item.title),
+        // 卷号按【文件名】推导：EPUB 内部书名常常是「第一巻」这类写法，拿它排不了序
+        volume: volumeFromTitle(item.fileName || item.title),
         // 系列键保持 null：交给 groupBooks 的模糊匹配去归组（自己算会把它拆散）
         seriesKey: null
       })
