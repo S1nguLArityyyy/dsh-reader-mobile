@@ -18,6 +18,9 @@ export interface LanBook {
   hash?: string | null
   /** 电脑端算好的封面主色 ✓ 手机端直接沿用 ✓ */
   color?: string | null
+  /** 电脑端给的原始文件名与书名，用于推导卷号；旧版服务端不提供 */
+  title?: string | null
+  originalName?: string | null
 }
 
 function normalizeBase(base: string): string {

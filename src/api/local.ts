@@ -459,11 +459,19 @@ async function downloadLanBooks(): Promise<SyncState> {
       failed.push(title)
       continue
     }
-    const result = await importEpubBytes(bytes, item.name)
+    // 用电脑端的原始文件名，不要把 uuid 存进来
+    const result = await importEpubBytes(bytes, item.originalName || item.name)
     // 沿用电脑端算好的主色 ✓（一个像素都不算 ✓ 两端必然一致 ✓）
-    if (result.book && item.color) {
+    if (result.book) {
       const stored = await getBook(result.book.id)
-      if (stored) await putBook({ ...stored, coverColor: item.color })
+      if (stored) {
+        await putBook({
+          ...stored,
+          title: item.title || stored.title,
+          fileName: item.originalName || stored.fileName,
+          coverColor: item.color ?? stored.coverColor
+        })
+      }
     }
     if (result.book) {
       if (!have.has(result.book.id)) done += 1
