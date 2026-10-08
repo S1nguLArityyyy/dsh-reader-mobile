@@ -1,7 +1,7 @@
 {
   "name": "dsh-reader-mobile",
   "productName": "Dsh Reader",
-  "version": "2.6.7",
+  "version": "2.6.8",
   "private": true,
   "description": "Dsh Reader 手机端（安卓 APK，Capacitor）",
   "type": "module",
