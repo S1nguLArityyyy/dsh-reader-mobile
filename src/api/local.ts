@@ -659,12 +659,6 @@ function volumeFromTitle(title: string): string | null {
   return matches[matches.length - 1]
 }
 
-/** 去掉末尾卷号当系列键：败北女角太多了！08 → 败北女角太多了！ */
-function seriesKeyFromTitle(title: string): string | null {
-  const text = String(title ?? '').trim()
-  const stripped = text.replace(/[\s·・\-—_]*\d+(?:\.\d+)?\s*(?:卷|册|集|话)?\s*$/, '').trim()
-  return stripped && stripped !== text ? stripped : null
-}
 
 async function listAllBooks(): Promise<Book[]> {
   const builtIn = toBook(await loadLibrary())
@@ -689,7 +683,8 @@ async function listAllBooks(): Promise<Book[]> {
         // 这两项必须显式带出来，否则会被上面的 ...builtIn 覆盖成默认值
         finished: item.finished === true,
         volume: volumeFromTitle(item.title),
-        seriesKey: seriesKeyFromTitle(item.title)
+        // 系列键保持 null：交给 groupBooks 的模糊匹配去归组（自己算会把它拆散）
+        seriesKey: null
       })
     }
   } catch {
@@ -706,7 +701,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.6.5',
+        version: '2.6.6',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
