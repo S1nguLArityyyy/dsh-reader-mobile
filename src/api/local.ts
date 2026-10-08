@@ -313,6 +313,19 @@ function readSettings(): Settings {
  *   progress: 同一本书按 updatedAt 取新 ✓
  *   sessions: 同一 (书, 日期, 设备) 取较大值 ✓ 不同设备各留一条 ✓ 统计时相加 ✓
  */
+/** 待用户裁决的进度冲突（局域网合并时产生，解决后清空） */
+let lanConflicts: Array<Record<string, unknown>> = []
+/** 冲突时电脑那一侧的原始记录，用户选"以电脑为准"时用 */
+let lanRemoteProgress: Record<string, Record<string, unknown>> = {}
+
+/** 按 id 找书名（冲突弹窗要显示是哪本书） */
+function readBooksTitle(bookId: string): string {
+  const cached = bookTitleCache.get(bookId)
+  if (cached) return cached
+  return bookId.replace(/^sha1:/, '').slice(0, 8)
+}
+const bookTitleCache = new Map<string, string>()
+
 async function syncLanRecords(): Promise<{ ok: boolean; message: string }> {
   const base = String(readSettings().sync.localCloudDir ?? '')
   const pulled = await fetchLanRecords(base)
@@ -324,14 +337,36 @@ async function syncLanRecords(): Promise<{ ok: boolean; message: string }> {
     if (/^[0-9a-f]{40}$/i.test(value)) return `sha1:${value.toLowerCase()}`
     return value
   }
-  // 进度合并
+  // 进度合并（带冲突检测）
   const local = readProgress()
+  const lastSyncAt = Number(readSyncState().lastSyncAt ?? 0)
   let progressChanged = 0
+  lanConflicts = []
+  lanRemoteProgress = {}
   for (const [rawId, remote] of Object.entries(pulled.progress)) {
     const bookId = normalizeBookId(rawId)
     const mine = local[bookId]
     const remoteAt = Number(remote.updatedAt ?? 0)
     const mineAt = Number(mine?.updatedAt ?? 0)
+
+    // ★ 两端都动过 = 冲突 ★ 交给用户裁决，不自动合并
+    //   首次同步（lastSyncAt 为 0）没有基准，按"谁新用谁"处理，不打扰用户
+    const localChanged = mine !== undefined && mineAt > lastSyncAt
+    const cloudChanged = remoteAt > lastSyncAt
+    if (lastSyncAt > 0 && mine && localChanged && cloudChanged && Math.abs(mineAt - remoteAt) > 1000) {
+      lanRemoteProgress[bookId] = { ...remote, bookId }
+      const known = readBooksTitle(bookId)
+      lanConflicts.push({
+        bookId,
+        title: known,
+        localAt: mineAt,
+        cloudAt: remoteAt,
+        localPercent: Number(mine.percent ?? 0),
+        cloudPercent: Number(remote.percent ?? 0)
+      })
+      continue
+    }
+
     if (remoteAt <= mineAt) continue
     local[bookId] = {
       bookId,
@@ -343,9 +378,7 @@ async function syncLanRecords(): Promise<{ ok: boolean; message: string }> {
       deviceId: String(remote.deviceId ?? 'desktop'),
       rev: Number(remote.rev ?? 1)
     }
-    progressChanged += 1
-    // 收到的记录是权威的：读到 100% 就算读完，否则取消本机的手动标记
-    // （上一版只更新 progress、没动标记，而标记又优先显示 100%，所以看起来"没被覆盖"）
+    // 收到的记录是权威的：读到 100% 就算读完，否则取消本机手动标记
     try {
       const storedBook = await getBook(bookId)
       if (storedBook) {
@@ -357,6 +390,7 @@ async function syncLanRecords(): Promise<{ ok: boolean; message: string }> {
     } catch {
       /* IndexedDB 不可用就只更新进度 */
     }
+    progressChanged += 1
   }
   if (progressChanged > 0) writeProgress(local)
 
@@ -652,7 +686,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.5.5',
+        version: '2.6.0',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -917,6 +951,13 @@ export function createLocalApi(): unknown {
         }).catch(() => ({ ok: false, message: '' }))
         const result = await syncLanRecords()
         const pushNote = pushed.ok ? pushed.message + '｜' : ''
+        if (lanConflicts.length > 0) {
+          // 有冲突就不推进 lastSyncAt，等用户裁决完再说
+          return writeSyncState({
+            phase: 'conflict',
+            message: pushNote + result.message + `｜发现 ${lanConflicts.length} 处进度冲突，请选择以哪边为准`
+          })
+        }
         return writeSyncState({ phase: 'idle', message: pushNote + result.message, lastSyncAt: Date.now() })
       },
       connect: async () => downloadLanBooks(),
@@ -927,12 +968,58 @@ export function createLocalApi(): unknown {
           sessions: readSessions() as unknown as Array<Record<string, unknown>>
         }).catch(() => ({ ok: false, message: "" }))
         await syncLanRecords()
+        if (lanConflicts.length > 0) {
+          return writeSyncState({
+            phase: 'conflict',
+            message: `发现 ${lanConflicts.length} 处进度冲突，请选择以哪边为准`
+          })
+        }
         return downloadLanBooks()
       },
       cancel: async () => writeSyncState({ message: '已取消' }),
       downloadAll: () => downloadLanBooks(),
-      conflicts: async () => [],
-      resolve: async () => readSyncState(),
+      conflicts: async () => lanConflicts,
+      /** 用户裁决冲突：local = 以本机为准，cloud = 以电脑为准 */
+      resolve: async (items: Array<{ bookId: string }>, choice: "local" | "cloud") => {
+        const all = readProgress()
+        let done = 0
+        for (const item of items) {
+          if (choice === "cloud") {
+            const remote = lanRemoteProgress[item.bookId]
+            if (remote) {
+              all[item.bookId] = {
+                bookId: item.bookId,
+                percent: Number(remote.percent ?? 0),
+                chapterIndex: Number(remote.chapterIndex ?? 0),
+                chapterTitle: String(remote.chapterTitle ?? ""),
+                scrollRatio: Number(remote.scrollRatio ?? 0),
+                updatedAt: Number(remote.updatedAt ?? Date.now()),
+                deviceId: String(remote.deviceId ?? "desktop"),
+                rev: Number(remote.rev ?? 1)
+              }
+              done += 1
+            }
+          } else {
+            const mine = all[item.bookId]
+            if (mine) {
+              all[item.bookId] = { ...mine, updatedAt: Date.now(), rev: Number(mine.rev ?? 1) + 1 }
+              done += 1
+            }
+          }
+        }
+        if (done > 0) writeProgress(all)
+        lanConflicts = []
+        lanRemoteProgress = {}
+        await pushLanRecords(String(readSettings().sync.localCloudDir ?? ""), {
+          progress: readProgress() as unknown as Record<string, unknown>,
+          sessions: readSessions() as unknown as Array<Record<string, unknown>>
+        }).catch(() => ({ ok: false, message: "" }))
+        return writeSyncState({
+          phase: "idle",
+          message: `已按${choice === "cloud" ? "电脑" : "本机"}为准解决 ${done} 处冲突`,
+          lastSyncAt: Date.now()
+        })
+      },
       afterReading: async () => undefined,
       onChanged: () => () => undefined
     }
