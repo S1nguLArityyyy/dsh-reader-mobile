@@ -297,11 +297,6 @@ export function LibraryPage() {
           >
               <RefreshCw size={19} />
           </button>
-          {seriesFilter && !query ? (
-            <button className="btn btn-ghost btn-sm" onClick={() => setSeriesFilter(null)}>
-              显示全部
-            </button>
-          ) : null}
           <button
             className={`icon-btn${selectMode ? ' active' : ''}`}
             title={selectMode ? '退出多选' : '多选管理'}
