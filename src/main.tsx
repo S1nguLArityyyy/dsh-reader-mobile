@@ -33,11 +33,43 @@ createRoot(container).render(
  */
 void (async () => {
   const { useApp } = await import('./store/app')
+  // 连续失败就停下来（此前会每分钟无脑重试 ✗ 网盘风控时反而一直撞墙 ✓）
+  let consecutiveFailures = 0
+  let stoppedUntil = 0
+  const FAIL_LIMIT = 3
+
+  const looksFailed = (message: string): boolean =>
+    /失败|错误|无法|超时|errno|HTTP\s*[45]|未授权|未配置|请先/.test(message)
+
   const runOnce = (): void => {
     const state = useApp.getState()
     if (!state.settings?.sync.auto) return
-    console.info('[自动同步] 开始一轮')
-    void state.runSync?.()
+    if (Date.now() < stoppedUntil) return
+    if (consecutiveFailures >= FAIL_LIMIT) return
+    console.info('[自动同步] 开始一轮（已连续失败 ' + consecutiveFailures + ' 次）')
+    void Promise.resolve(state.runSync?.())
+      .then(() => {
+        const after = useApp.getState().sync
+        const message = String(after?.message ?? '')
+        if (looksFailed(message)) {
+          consecutiveFailures += 1
+          if (consecutiveFailures >= FAIL_LIMIT) {
+            // 退避 30 分钟再试一轮 ✓ 不再每分钟撞墙 ✓
+            stoppedUntil = Date.now() + 30 * 60_000
+            consecutiveFailures = 0
+            console.info('[自动同步] 连续失败 3 次，暂停 30 分钟')
+          }
+        } else {
+          consecutiveFailures = 0
+        }
+      })
+      .catch(() => {
+        consecutiveFailures += 1
+        if (consecutiveFailures >= FAIL_LIMIT) {
+          stoppedUntil = Date.now() + 30 * 60_000
+          consecutiveFailures = 0
+        }
+      })
   }
   window.setTimeout(runOnce, 3000)
   window.setInterval(runOnce, 60_000)

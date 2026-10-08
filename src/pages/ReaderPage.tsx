@@ -7,7 +7,6 @@ import { mediaUrl, percentText } from '../lib/format'
 import { SegmentedControl, Slider } from '../components/ui'
 
 const COLUMN_GAP = 48
-const MIN_COLUMN = 340
 /** 点击左右多少比例的区域翻页 */
 const TAP_ZONE = 0.28
 /** 滚轮翻页的节流间隔（毫秒） */
@@ -82,7 +81,8 @@ export function ReaderPage() {
       ? bodySize.width - pagedSideMargin * 2
       : bodySize.width - padding * 2
   )
-  const columns = mode === 'paged' && available >= MIN_COLUMN * 2 + COLUMN_GAP ? 2 : 1
+  // 手机端一律单栏（此前沿用桌面端"够宽就两栏"的判断 ✗ 手机上会跳页 ✓）
+  const columns = 1
   const columnWidth = useMemo(() => {
     // 单栏：版心宽度 = min(设置值, 可用宽)，只保留很小的安全下限（翻页用自己那套版心宽度）
     const wanted =
