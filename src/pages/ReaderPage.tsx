@@ -43,12 +43,24 @@ export function ReaderPage() {
     tick()
     const timer = window.setInterval(tick, 20000)
     // 电量：Chromium / 安卓 WebView 支持 Battery Status API
-    const nav = navigator as Navigator & { getBattery?: () => Promise<{ level: number }> }
+    // 电量：之前只取了一次 ✗ 永远不变 ✓ 现在监听 levelchange + 每 60 秒兜底 ✓
+    type BatteryLike = { level: number; addEventListener?: (type: string, fn: () => void) => void }
+    const nav = navigator as Navigator & { getBattery?: () => Promise<BatteryLike> }
+    let batteryTimer = 0
+    const applyBattery = (info: BatteryLike): void => setBattery(Math.round(info.level * 100))
     void nav
       .getBattery?.()
-      .then((info) => setBattery(Math.round(info.level * 100)))
+      .then((info) => {
+        applyBattery(info)
+        info.addEventListener?.('levelchange', () => applyBattery(info))
+        info.addEventListener?.('chargingchange', () => applyBattery(info))
+        batteryTimer = window.setInterval(() => applyBattery(info), 60_000)
+      })
       .catch(() => setBattery(null))
-    return () => window.clearInterval(timer)
+    return () => {
+      window.clearInterval(timer)
+      window.clearInterval(batteryTimer)
+    }
   }, [])
   const [ratio, setRatio] = useState(0)
   const [page, setPage] = useState(0)
@@ -749,7 +761,7 @@ export function ReaderPage() {
           {battery === null ? '—' : `${battery}%`}
         </span>
         <span className="rs-item">
-          {chapterIndex + 1}/{chapters.length} · {percentText(totalPercent)}%
+          {mode === 'paged' ? '第 ' + (chapterIndex + 1) + '/' + chapters.length + ' 章 · ' + (page + 1) + '/' + pages + ' 页' : '第 ' + (chapterIndex + 1) + '/' + chapters.length + ' 章'} · 本书 {percentText(totalPercent)}%
         </span>
         <span className="rs-item">{clock}</span>
       </div>
