@@ -812,7 +812,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '2.3.2',
+        version: '2.4.0',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',

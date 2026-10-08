@@ -40,6 +40,8 @@ export interface Book {
   addedAt: number
   lastOpenedAt: number | null
   hidden: boolean
+  /** 用户手动标记为已读完 */
+  finished?: boolean
   /** 是否将该书文件上传到网盘（按需上传策略，默认 false） */
   syncUpload: boolean
 }

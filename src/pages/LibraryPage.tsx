@@ -177,7 +177,7 @@ export function LibraryPage() {
           <div className="book-overlay">
             <div className="book-overlay-title">{book.title}</div>
             <div className="book-overlay-sub">
-              {book.author} · {book.chapterCount} 章 · 已读 {percentText(bookPct)}%
+              {book.author} · {book.chapterCount} 章 · 已读 {percentText(bookPct)}%{book.finished ? ' · 已读完' : ''}
             </div>
           </div>
           {selectMode ? (
@@ -542,6 +542,25 @@ export function LibraryPage() {
             <Layers size={14} />
             归入合集
           </button>
+          <button
+            className="btn btn-ghost btn-sm"
+            disabled={selected.length === 0}
+            onClick={() => {
+              for (const id of selected) void updateBook(id, { finished: true })
+              toast('success', '已标记为读完 ')
+            }}
+          >
+            标记读完
+          </button>
+          <button
+            className="btn btn-ghost btn-sm"
+            disabled={selected.length === 0}
+            onClick={() => {
+              for (const id of selected) void updateBook(id, { finished: false })
+            }}
+          >
+            标记未读
+          </button>
           <button className="btn btn-ghost btn-sm" disabled={selected.length === 0} onClick={() => void bulkHide()}>
             <EyeOff size={14} />
             隐藏
@@ -579,6 +598,7 @@ export function LibraryPage() {
               { label: '开始阅读', run: () => void openReader(sheetBook.id) },
               { label: '归入合集…', run: () => setCollectionIds([sheetBook.id]) },
               { label: sheetBook.syncUpload ? '取消上传到网盘' : '上传到网盘', run: () => void updateBook(sheetBook.id, { syncUpload: !sheetBook.syncUpload }) },
+              { label: sheetBook.finished ? '标记为未读完' : '标记为已读完', run: () => void updateBook(sheetBook.id, { finished: !sheetBook.finished }) },
               { label: '暂时隐藏', run: () => void updateBook(sheetBook.id, { hidden: true }) },
               { label: '清除阅读记录（保留书）',
                 run: () => {
