@@ -10,6 +10,8 @@
     </style>
 
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <!-- 闪屏之后、界面画出前的窗口背景：与闪屏同款，避免中间闪白 -->
+        <item name="android:windowBackground">@drawable/launch_background</item>
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
