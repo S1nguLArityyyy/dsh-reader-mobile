@@ -92,7 +92,9 @@ async function loadLibrary(): Promise<ExportedLibrary> {
 function seedDemoReading(bookId: string): void {
   const now = Date.now()
   const today = dayKey()
-  const yesterday = new Date(now - 86400000).toISOString().slice(0, 10)
+  // 本地时间的"昨天"：跟 dayKey 同口径，别用 toISOString（UTC 会让凌晨算错一天）
+  const yd = new Date(now - 86400000)
+  const yesterday = `${yd.getFullYear()}-${String(yd.getMonth() + 1).padStart(2, '0')}-${String(yd.getDate()).padStart(2, '0')}`
 
   // 只要书还没有进度就种一条（不依赖 localStorage 标记，内存兜底也认）
   const all = readProgress()
@@ -245,7 +247,20 @@ function writeSessions(rows: SessionRow[]): void {
   }
 }
 
-const dayKey = (): string => new Date().toISOString().slice(0, 10)
+/**
+ * 本地日期键 YYYY-MM-DD。
+ *
+ * 必须用本地时间，不能用 toISOString()（那是 UTC）：
+ * 北京时间凌晨 0:00–8:00 时 UTC 日期还是前一天，于是"今天读的"会被记到昨天，
+ * 电脑端按本地日期统计就看不到这段时长（用户反馈过"手机有 9 分钟、电脑没有"）。
+ * 与电脑端 store.ts 的 todayKey() 保持同一口径。
+ */
+const dayKey = (): string => {
+  const d = new Date()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${day}`
+}
 
 function defaultSettings(): Settings {
   return {
