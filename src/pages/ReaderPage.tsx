@@ -74,6 +74,13 @@ export function ReaderPage() {
   const saveTimer = useRef<number | null>(null)
   const restoredBook = useRef<string | null>(null)
   const pendingAnchor = useRef<string | null>(null)
+  /**
+   * 本书每章读到哪（章号 → 章内比例）。
+   * 向前翻回上一章时要回到"那一章上次读到的位置"，
+   * 而 progress 里只存了"当前章"的位置，翻回去之前它并不在里面 ——
+   * 所以这里按章号记一份，翻章时按目标章号取。
+   */
+  const chapterPositions = useRef<Record<number, number>>({})
 
   const readerSettings = settings?.reader
   const theme = READER_THEMES[readerSettings?.theme ?? 'paper']
@@ -159,7 +166,9 @@ export function ReaderPage() {
       last = now
       if (document.hidden || !document.hasFocus()) return
       acc += delta
-      if (acc >= 20) flush()
+      // 5 秒就上报一次（原来攒到 20 秒）：
+      // 会话记录的 lastAt 是"最近在读哪本"的依据，攒太久首页卡片会明显滞后
+      if (acc >= 5) flush()
     }, 4000)
     const onBlur = (): void => {
       last = Date.now()
@@ -246,18 +255,27 @@ export function ReaderPage() {
     //   之前这里无条件 setPage(0) + ratio=0，于是"阅读中切滚动↔翻页"会跳回本章开头（用户反馈的 bug）
     if (pagedChapter.current !== chapterIndex) {
       pagedChapter.current = chapterIndex
-      if (reader.jumpDir === 'backward') {
-        // 向前翻章（比如在第 3 章第 1 屏往前翻）：要停在上一章的【最后一屏】，
-        // 落在开头的话看起来就像章节被跳过了一页
-        const last = screens - 1
-        const value = screens > 1 ? last / screens : 0
-        setPage(last)
+      const toRatio = (value: number): void => {
         ratioRef.current = value
         setRatio(value)
+      }
+      if (reader.jumpDir === 'resume') {
+        // 按章翻阅回到这一章：落在【上次读到的位置】，而不是开头或末尾。
+        // 这个位置由 goToChapter 从 progress 里取出来带进来 ——
+        // 不能用"刚才那一章的 ratio"，那是另一本书/另一章的位置。
+        const saved = Math.min(0.999, Math.max(0, reader.restoreRatio ?? 0))
+        setPage(Math.max(0, Math.min(screens - 1, Math.round(saved * screens))))
+        toRatio(saved)
         return
       }
-      ratioRef.current = 0
-      setRatio(0)
+      if (reader.jumpDir === 'backward') {
+        // 向前翻过了章首、且这一章没有阅读记录：停在它的最后一屏（落到开头等于跳过一屏）
+        const last = screens - 1
+        setPage(last)
+        toRatio(screens > 1 ? last / screens : 0)
+        return
+      }
+      toRatio(0)
       setPage(0)
       return
     }
@@ -277,7 +295,15 @@ export function ReaderPage() {
   useEffect(() => {
     lastChapter.current = null
     pagedChapter.current = null
+    // 换书：把上一本记的"每章读到哪"清掉，否则会串到新书上
+    chapterPositions.current = {}
   }, [bookId])
+
+  // 进入某一章时把当前位置登记进去：这是"翻回上一章"时的落点依据
+  useEffect(() => {
+    if (!html) return
+    chapterPositions.current[chapterIndex] = ratioRef.current
+  }, [html, chapterIndex])
   useEffect(() => {
     if (mode !== 'scroll' || !html) return
     // 只是切换了阅读模式（章号没变）→ 保持当前滚动位置，别跳回章首
@@ -330,17 +356,26 @@ export function ReaderPage() {
       if (mode === 'paged') {
         const next = page + delta
         if (next < 0) {
-          // 向前翻章：带上方向，让新章停在最后一屏而不是开头
-          if (chapterIndex > 0) void goToChapter(chapterIndex - 1, 'backward')
+          // 向前翻过章首：记下本/上一章的位置，回到上一章【上次读到的位置】
+          chapterPositions.current[chapterIndex] = ratioRef.current
+          persist(ratioRef.current)
+          if (chapterIndex > 0) {
+            void goToChapter(chapterIndex - 1, 'backward', { positions: chapterPositions.current })
+          }
           return
         }
         if (next >= pages) {
+          // 向后翻过章末：本章位置记下来（供以后翻回来），下一章从开头开始
+          chapterPositions.current[chapterIndex] = ratioRef.current
+          persist(ratioRef.current)
           if (chapterIndex < chapters.length - 1) void goToChapter(chapterIndex + 1, 'forward')
           return
         }
         setPage(next)
         const value = pages > 1 ? next / pages : 0
         ratioRef.current = value
+        // 随手记下本章读到哪，翻回去时要用
+        chapterPositions.current[chapterIndex] = value
         setRatio(value)
         schedulePersist(value)
         return

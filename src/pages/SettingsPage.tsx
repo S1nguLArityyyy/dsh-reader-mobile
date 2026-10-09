@@ -288,6 +288,11 @@ export function SettingsPage() {
               >
                 <h3 style={{ margin: '0 0 12px' }}>更新记录</h3>
                 <div className="setting-desc" style={{ lineHeight: 1.9 }}>
+                  <b>209</b>
+                  <br />修复：向前翻回上一章时回到【那一章上次读到的位置】（之前会落到章首或章末）
+                  <br />阅读时长上报从每 20 秒改成约 5 秒，最近阅读卡片更跟手
+                  <br />
+                  <br />
                   <b>208</b>
                   <br />修复：翻页模式下向前翻到上一章会停在章首，现在正确停在上一章的最后一页
                   <br />

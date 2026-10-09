@@ -32,10 +32,14 @@ export interface ReaderState {
   /** 打开时恢复用的滚动比例 */
   scrollRatio: number
   /**
-   * 最近一次换章的方向：只在 goToChapter 里写，
-   * 供阅读器决定新章落在开头还是末尾（向前翻章要停在上一章的最后一页）。
+   * 最近一次换章的方向：
+   *  - forward：向后翻过章末（落在新章开头）
+   *  - backward：向前翻过章首（落在上一章末尾）
+   *  - resume：回到该章上次读到的位置（按章翻阅时用）
    */
-  jumpDir?: 'forward' | 'backward'
+  jumpDir?: 'forward' | 'backward' | 'resume'
+  /** jumpDir === 'resume' 时要恢复到的章内位置（0~1） */
+  restoreRatio?: number
 }
 
 const emptyReader: ReaderState = {
@@ -166,7 +170,11 @@ interface AppStore {
 
   openReader: (bookId: string) => Promise<void>
   closeReader: () => void
-  goToChapter: (index: number, dir?: 'forward' | 'backward') => Promise<void>
+  goToChapter: (
+    index: number,
+    dir?: 'forward' | 'backward',
+    resume?: { positions?: Record<number, number> }
+  ) => Promise<void>
 
   setSyncModal: (open: boolean) => void
   setConflictModal: (open: boolean) => void
@@ -481,13 +489,25 @@ export const useApp = create<AppStore>((set, get) => ({
     void window.api.sync.afterReading()
   },
 
-  async goToChapter(index, dir) {
+  async goToChapter(index, dir, resume) {
     const { reader } = get()
     if (!reader.bookId) return
     const target = Math.max(0, Math.min(reader.chapters.length - 1, index))
-    // 记录换章方向：阅读器据此决定新章停在开头（向后）还是末尾（向前）
-    const jumpDir = dir ?? (target > reader.chapterIndex ? 'forward' : target < reader.chapterIndex ? 'backward' : reader.jumpDir)
-    set({ reader: { ...get().reader, loading: true, chapterIndex: target, jumpDir } })
+    // 方向决定新章节落在哪里
+    const jumpDir =
+      dir ?? (target > reader.chapterIndex ? 'forward' : target < reader.chapterIndex ? 'backward' : reader.jumpDir)
+    // 向前翻回上一章：若阅读器记过那一章读到哪，就回到那个位置；
+    // 没记过（比如从没进过那一章）才落到章末
+    const restored = jumpDir === 'backward' ? resume?.positions?.[target] : undefined
+    set({
+      reader: {
+        ...get().reader,
+        loading: true,
+        chapterIndex: target,
+        jumpDir: restored !== undefined ? 'resume' : jumpDir,
+        restoreRatio: restored
+      }
+    })
     try {
       const chapter = await window.api.reader.chapter(reader.bookId, target)
       set({
