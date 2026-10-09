@@ -1,8 +1,9 @@
 /**
  * 手机端的 window.api 类型（与桌面端 100% 同一份定义）。
  *
- * 只保留"形状"：真正的实现在 src/api/backend.ts —— 手机端直连 WebDAV，
- * 不经过 Electron IPC，所以这里不引入任何运行时依赖，仅用于类型检查。
+ * 只保留"形状"：真正的实现在 src/api/local.ts —— 手机端不经过 Electron IPC，
+ * 直接读写本机存储（IndexedDB / localStorage）并通过局域网与电脑端交换记录，
+ * 所以这里不引入任何运行时依赖，仅用于类型检查。
  */
 import type {
   AppInfo,

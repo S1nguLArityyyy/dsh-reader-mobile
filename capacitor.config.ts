@@ -4,11 +4,6 @@ const config: CapacitorConfig = {
   appId: 'com.dshreader.app',
   appName: 'Dsh Reader',
   webDir: 'dist',
-  server: {
-      // 允许 App 自己的 WebView 跳转到百度登录页：登录后 cookie 落在 App 的 WebView cookie jar 里，
-      // 之后 CapacitorHttp 会自动带上它 —— 这就是应用内登录 + 复用会话在安卓端的实现方式（无需原生插件）
-      allowNavigation: ['*.baidu.com', 'pan.baidu.com', 'passport.baidu.com', 'wappass.baidu.com'],
-  },
   android: {
     // 阅读器要滚动长文，允许 WebView 覆盖层滚动；混合内容保持关闭
     allowMixedContent: false,
@@ -21,12 +16,11 @@ const config: CapacitorConfig = {
   },
   plugins: {
     /**
-     * 关键开关：让 fetch / XMLHttpRequest 走**原生网络栈**。
+     * 关键开关：让 fetch / XMLHttpRequest 走**原生网络栈**（安卓侧 OkHttp）。
      *
-     * 为什么必须开：
-     *  1. WebView 里的 fetch 受 CORS 限制，而坚果云这类 WebDAV 服务不带 CORS 头；
-     *  2. WebDAV 的 PROPFIND / MKCOL 是**非标准动词**，浏览器 fetch 根本发不出去。
-     * 走原生（安卓侧 OkHttp）两个问题一起解决 —— 这正是探路页要验证的事。
+     * 为什么必须开：手机要通过局域网 HTTP 访问电脑端（`http://<电脑 IP>:8787`），
+     * 而 WebView 里的 fetch 受 CORS 限制，直接请求会被拦下。
+     * 走原生网络栈就没有这个问题，同时超时/重定向行为也更可控。
      */
     CapacitorHttp: {
       enabled: true
