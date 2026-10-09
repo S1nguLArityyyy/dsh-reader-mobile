@@ -31,6 +31,11 @@ export interface ReaderState {
   error: string | null
   /** 打开时恢复用的滚动比例 */
   scrollRatio: number
+  /**
+   * 最近一次换章的方向：只在 goToChapter 里写，
+   * 供阅读器决定新章落在开头还是末尾（向前翻章要停在上一章的最后一页）。
+   */
+  jumpDir?: 'forward' | 'backward'
 }
 
 const emptyReader: ReaderState = {
@@ -43,7 +48,8 @@ const emptyReader: ReaderState = {
   html: '',
   loading: false,
   error: null,
-  scrollRatio: 0
+  scrollRatio: 0,
+  jumpDir: 'forward'
 }
 
 const emptySync: SyncState = {
@@ -160,7 +166,7 @@ interface AppStore {
 
   openReader: (bookId: string) => Promise<void>
   closeReader: () => void
-  goToChapter: (index: number) => Promise<void>
+  goToChapter: (index: number, dir?: 'forward' | 'backward') => Promise<void>
 
   setSyncModal: (open: boolean) => void
   setConflictModal: (open: boolean) => void
@@ -475,11 +481,13 @@ export const useApp = create<AppStore>((set, get) => ({
     void window.api.sync.afterReading()
   },
 
-  async goToChapter(index) {
+  async goToChapter(index, dir) {
     const { reader } = get()
     if (!reader.bookId) return
     const target = Math.max(0, Math.min(reader.chapters.length - 1, index))
-    set({ reader: { ...get().reader, loading: true, chapterIndex: target } })
+    // 记录换章方向：阅读器据此决定新章停在开头（向后）还是末尾（向前）
+    const jumpDir = dir ?? (target > reader.chapterIndex ? 'forward' : target < reader.chapterIndex ? 'backward' : reader.jumpDir)
+    set({ reader: { ...get().reader, loading: true, chapterIndex: target, jumpDir } })
     try {
       const chapter = await window.api.reader.chapter(reader.bookId, target)
       set({

@@ -288,6 +288,10 @@ export function SettingsPage() {
               >
                 <h3 style={{ margin: '0 0 12px' }}>更新记录</h3>
                 <div className="setting-desc" style={{ lineHeight: 1.9 }}>
+                  <b>208</b>
+                  <br />修复：翻页模式下向前翻到上一章会停在章首，现在正确停在上一章的最后一页
+                  <br />
+                  <br />
                   <b>207</b>
                   <br />冲突弹窗不再只有同步面板里点同步才出现：从书库页的同步按钮同步时也会弹
                   <br />

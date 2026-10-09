@@ -242,10 +242,20 @@ export function ReaderPage() {
     const screens = Math.max(1, Math.ceil(totalColumns / columns))
     setPages(screens)
 
-    // ★ 换章必须回到章首，但切模式 / 改排版 / 缩放窗口不能 ★
+    // ★ 换章要重新定位，但切模式 / 改排版 / 缩放窗口不能 ★
     //   之前这里无条件 setPage(0) + ratio=0，于是"阅读中切滚动↔翻页"会跳回本章开头（用户反馈的 bug）
     if (pagedChapter.current !== chapterIndex) {
       pagedChapter.current = chapterIndex
+      if (reader.jumpDir === 'backward') {
+        // 向前翻章（比如在第 3 章第 1 屏往前翻）：要停在上一章的【最后一屏】，
+        // 落在开头的话看起来就像章节被跳过了一页
+        const last = screens - 1
+        const value = screens > 1 ? last / screens : 0
+        setPage(last)
+        ratioRef.current = value
+        setRatio(value)
+        return
+      }
       ratioRef.current = 0
       setRatio(0)
       setPage(0)
@@ -320,11 +330,12 @@ export function ReaderPage() {
       if (mode === 'paged') {
         const next = page + delta
         if (next < 0) {
-          if (chapterIndex > 0) void goToChapter(chapterIndex - 1)
+          // 向前翻章：带上方向，让新章停在最后一屏而不是开头
+          if (chapterIndex > 0) void goToChapter(chapterIndex - 1, 'backward')
           return
         }
         if (next >= pages) {
-          if (chapterIndex < chapters.length - 1) void goToChapter(chapterIndex + 1)
+          if (chapterIndex < chapters.length - 1) void goToChapter(chapterIndex + 1, 'forward')
           return
         }
         setPage(next)
