@@ -40,6 +40,8 @@ export interface StoredBook {
   addedAt: number
   /** 用户手动标记为已读完 */
   finished?: boolean
+  /** 标记读完的日期（YYYY-MM-DD），同步给电脑时用它记录时间 */
+  finishedAt?: string
 }
 
 /** 每章字数 + 算法版本（版本变了要重算，否则两端进度口径不一致） */

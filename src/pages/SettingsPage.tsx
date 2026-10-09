@@ -288,6 +288,11 @@ export function SettingsPage() {
               >
                 <h3 style={{ margin: '0 0 12px' }}>更新记录</h3>
                 <div className="setting-desc" style={{ lineHeight: 1.9 }}>
+                  <b>205</b>
+                  <br />修复：阅读时长记录补上最后阅读时间，首页「最近阅读」现在会跟着走
+                  <br />新增：「已读完」标记会与电脑双向同步（任一端标记过就算读完）
+                  <br />
+                  <br />
                   <b>204</b>
                   <br />系列标题后新增复选框：多选模式下勾一下即可选中/取消整个系列
                   <br />（「单册书籍」不是系列，不提供整组勾选）

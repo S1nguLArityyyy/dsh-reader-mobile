@@ -182,7 +182,22 @@ function toToc(data: ExportedLibrary): BookOpenPayload['toc'] {
  * 所以所有读写都再镜像一份到内存：localStorage 里有就用它，没有就用内存里的。
  */
 const memoryProgress: Record<string, Progress> = {}
-const memorySessions: Array<{ bookId: string; day: string; seconds: number; deviceId?: string }> = []
+/**
+ * 一条阅读时长记录。
+ * lastAt 必须跟着心跳走 —— 首页「最近阅读」卡片是按它挑最近读的那本书的，
+ * 之前这里没有这个字段，推送记录时带上 undefined，电脑端算出来是 Invalid Date，
+ * 于是卡片一直显示错的书。
+ */
+interface SessionRow {
+  bookId: string
+  day: string
+  seconds: number
+  deviceId?: string
+  firstAt?: number
+  lastAt?: number
+}
+
+const memorySessions: SessionRow[] = []
 
 function readProgress(): Record<string, Progress> {
   let stored: Record<string, Progress> = {}
@@ -203,14 +218,10 @@ function writeProgress(all: Record<string, Progress>): void {
   }
 }
 
-function readSessions(): Array<{ bookId: string; day: string; seconds: number; deviceId?: string }> {
-  let stored: Array<{ bookId: string; day: string; seconds: number; deviceId?: string }> = []
+function readSessions(): SessionRow[] {
+  let stored: SessionRow[] = []
   try {
-    stored = JSON.parse(localStorage.getItem(SESSIONS_KEY) ?? '[]') as Array<{
-      bookId: string
-      day: string
-      seconds: number
-    }>
+    stored = JSON.parse(localStorage.getItem(SESSIONS_KEY) ?? '[]') as SessionRow[]
   } catch {
     stored = []
   }
@@ -223,12 +234,10 @@ function readSessions(): Array<{ bookId: string; day: string; seconds: number; d
   return [...merged.values()]
 }
 
-function writeSessions(rows: Array<{ bookId: string; day: string; seconds: number; deviceId?: string }>): void {
-  for (const row of rows) {
-    const existing = (memorySessions ?? []).find((item) => item.bookId === row.bookId && item.day === row.day)
-    if (existing) existing.seconds = row.seconds
-    else memorySessions.push({ ...row })
-  }
+function writeSessions(rows: SessionRow[]): void {
+  // 整份替换：此前只把 seconds 同步进内存，lastAt 会在下一次 readSessions 时丢掉
+  memorySessions.length = 0
+  for (const row of rows) memorySessions.push({ ...row })
   try {
     localStorage.setItem(SESSIONS_KEY, JSON.stringify(rows))
   } catch {
@@ -338,6 +347,19 @@ function readBooksTitle(bookId: string): string {
 }
 const bookTitleCache = new Map<string, string>()
 
+/** 本机手动标记的「已读完」：书 id → 日期，供推送给电脑 */
+async function getLocalFinished(): Promise<Record<string, string>> {
+  const out: Record<string, string> = {}
+  try {
+    for (const book of await listBooks()) {
+      if (book.finished === true) out[book.id] = String(book.finishedAt ?? dayKey())
+    }
+  } catch {
+    /* 取不到就不推 */
+  }
+  return out
+}
+
 async function syncLanRecords(): Promise<{ ok: boolean; message: string }> {
   const base = String(readSettings().sync.localCloudDir ?? '')
   const pulled = await fetchLanRecords(base)
@@ -406,6 +428,21 @@ async function syncLanRecords(): Promise<{ ok: boolean; message: string }> {
     progressChanged += 1
   }
   if (progressChanged > 0) writeProgress(local)
+
+  // 手动标记的「已读完」：以并集合并（任一端标过就算读完）
+  let finishedMerged = 0
+  try {
+    for (const [rawId, day] of Object.entries(pulled.finished ?? {})) {
+      const bookId = normalizeBookId(rawId)
+      if (!bookId) continue
+      const storedBook = await getBook(bookId)
+      if (!storedBook || storedBook.finished === true) continue
+      await putBook({ ...storedBook, finished: true, finishedAt: String(day ?? '') })
+      finishedMerged += 1
+    }
+  } catch {
+    /* IndexedDB 不可用就跳过 */
+  }
 
   // 时长合并（按 书+日期+设备 去重 ✓ 取较大值 ✓）
   const rows = readSessions()
@@ -788,7 +825,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '204',
+        version: '205',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -858,7 +895,11 @@ export function createLocalApi(): unknown {
         const stored = await getBook(id)
         if (stored) {
           const next: StoredBook = { ...stored }
-          if (typeof patch.finished === "boolean") next.finished = patch.finished
+          if (typeof patch.finished === "boolean") {
+            next.finished = patch.finished
+            // 记下标记日期：同步给电脑时用它当完成时间
+            next.finishedAt = patch.finished ? dayKey() : undefined
+          }
           await putBook(next)
         }
         // ★ 必须返回完整书库列表 ★  store 里是 set({ books }) ✓
@@ -974,10 +1015,25 @@ export function createLocalApi(): unknown {
       tick: async (bookId: string, seconds: number) => {
         if (seconds < 1) return false
         const rows = readSessions()
-        const day = dayKey()
-        const row = (rows ?? []).find((item) => item.bookId === bookId && item.day === day)
-        if (row) row.seconds += Math.round(seconds)
-        else rows.push({ bookId, day, seconds: Math.round(seconds) })
+        // 按「书 + 日期 + 设备」定位，与电脑端的聚合口径一致
+        const row = rows.find((item) => item.bookId === bookId && item.day === dayKey())
+        const now = Date.now()
+        if (row) {
+          row.seconds += Math.round(seconds)
+          row.deviceId = row.deviceId ?? 'mobile-local'
+          // ★ 心跳必须推进时间：首页卡片靠它判断"最近在读哪本"、电脑端也按它排序
+          if (!row.firstAt) row.firstAt = now
+          row.lastAt = now
+        } else {
+          rows.push({
+            bookId,
+            day: dayKey(),
+            seconds: Math.round(seconds),
+            deviceId: 'mobile-local',
+            firstAt: now,
+            lastAt: now
+          })
+        }
         writeSessions(rows)
         return true
       }
@@ -997,6 +1053,15 @@ export function createLocalApi(): unknown {
           secondsByBook.set(row.bookId, (secondsByBook.get(row.bookId) ?? 0) + row.seconds)
         }
 
+        // 每本书最后一次阅读的时间：取会话里的 lastAt 最大值。
+        // 不能用 progress.updatedAt —— 它只在翻页/退出时写，读久了不会动，
+        // 首页「最近阅读」卡片就会一直停在上一本（与电脑端不同口径）。
+        const lastAtByBook = new Map<string, number>()
+        for (const row of sessions) {
+          const at = Number(row.lastAt ?? 0)
+          if (at > (lastAtByBook.get(row.bookId) ?? 0)) lastAtByBook.set(row.bookId, at)
+        }
+
         const all: Array<{ id: string; title: string; finished: boolean }> = [
           { id: builtIn.id, title: builtIn.title, finished: builtIn.finished === true },
           ...stored.map((item) => ({ id: item.id, title: item.title, finished: item.finished === true }))
@@ -1010,7 +1075,7 @@ export function createLocalApi(): unknown {
             // 手动标记读完的：进度按 100% 显示（不动真实阅读位置，取消标记即可恢复）
             percent: item.finished ? 1 : (record?.percent ?? 0),
             seconds: secondsByBook.get(item.id) ?? 0,
-            lastAt: record?.updatedAt ?? 0
+            lastAt: lastAtByBook.get(item.id) ?? 0
           }
         })
 
@@ -1036,7 +1101,11 @@ export function createLocalApi(): unknown {
             bookIds: entry.bookIds
           })),
           todaySeconds: daysMap.get(today)?.seconds ?? 0,
-          todayBookId: todayRows.length > 0 ? todayRows[todayRows.length - 1].bookId : null,
+          // 今天读得最晚的那本（按会话 lastAt），与电脑端 todayBookId 同口径
+          todayBookId:
+            todayRows.length > 0
+              ? todayRows.reduce((a, b) => (Number(a.lastAt ?? 0) >= Number(b.lastAt ?? 0) ? a : b)).bookId
+              : null,
           todayRemainingSeconds: null
         } as unknown as StatsPayload
       }
@@ -1049,7 +1118,8 @@ export function createLocalApi(): unknown {
         // 先把自己的记录推给电脑（只合并不删除），再把电脑的拉回来合并
         const pushed = await pushLanRecords(String(readSettings().sync.localCloudDir ?? ''), {
           progress: readProgress() as unknown as Record<string, unknown>,
-          sessions: readSessions() as unknown as Array<Record<string, unknown>>
+          sessions: readSessions() as unknown as Array<Record<string, unknown>>,
+          finished: await getLocalFinished()
         }).catch(() => ({ ok: false, message: '', pendingConflicts: 0 }))
         const result = await syncLanRecords()
         const pushNote = pushed.ok ? pushed.message + '｜' : '推给电脑失败｜'
@@ -1075,7 +1145,8 @@ export function createLocalApi(): unknown {
         // ★ 必须先推 ★ 否则手机这边的进度永远传不到电脑（之前 run 只拉不推）
         const pushed = await pushLanRecords(String(readSettings().sync.localCloudDir ?? ""), {
           progress: readProgress() as unknown as Record<string, unknown>,
-          sessions: readSessions() as unknown as Array<Record<string, unknown>>
+          sessions: readSessions() as unknown as Array<Record<string, unknown>>,
+          finished: await getLocalFinished()
         }).catch(() => ({ ok: false, message: "", pendingConflicts: 0 }))
         // 电脑端暂缓了这批记录 → 先不拉书，等用户在电脑上裁决完
         if (pushed.pendingConflicts > 0) {
@@ -1138,7 +1209,8 @@ export function createLocalApi(): unknown {
         lanRemoteProgress = {}
         await pushLanRecords(String(readSettings().sync.localCloudDir ?? ""), {
           progress: readProgress() as unknown as Record<string, unknown>,
-          sessions: readSessions() as unknown as Array<Record<string, unknown>>
+          sessions: readSessions() as unknown as Array<Record<string, unknown>>,
+          finished: await getLocalFinished()
         }).catch(() => ({ ok: false, message: "", pendingConflicts: 0 }))
         const detail = [toLocal > 0 ? `保留本机 ${toLocal} 本` : "", toRemote > 0 ? `采用电脑 ${toRemote} 本` : ""]
           .filter(Boolean)
