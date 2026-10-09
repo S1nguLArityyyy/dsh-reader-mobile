@@ -2279,6 +2279,27 @@
 
 /* ============ 多选管理 ============ */
 
+/* 系列标题后的复选框：勾上即选中/取消整个系列（多选模式下才出现） */
+.group-check {
+  flex: 0 0 auto;
+  width: 19px;
+  height: 19px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border-2);
+  background: var(--panel);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.group-check.on {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
 .book-check {
   position: absolute;
   top: 6px;

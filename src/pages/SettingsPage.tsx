@@ -250,15 +250,18 @@ export function SettingsPage() {
 
           <div className="setting-row">
             <div>
-              <div className="setting-label">自动下载电脑新书</div>
-              <div className="setting-desc">打开后同步时自动把电脑上有、手机没有的书拉过来</div>
+              <div className="setting-label">关闭阅读时同步</div>
+              <div className="setting-desc">合上书立刻把这次的进度与阅读时长推给电脑</div>
             </div>
             <div className="setting-control">
               <Switch
-                checked={syncSettings.autoDownloadBooks}
-                onChange={(v) => patchSync({ autoDownloadBooks: v })}
+                checked={syncSettings.onReaderClose}
+                onChange={(v) => patchSync({ onReaderClose: v })}
               />
             </div>
+          </div>
+        </section>
+
         {/* ---------- 关于 ---------- */}
         <section className="setting-card">
           <h3>关于</h3>
@@ -285,6 +288,40 @@ export function SettingsPage() {
               >
                 <h3 style={{ margin: '0 0 12px' }}>更新记录</h3>
                 <div className="setting-desc" style={{ lineHeight: 1.9 }}>
+                  <b>204</b>
+                  <br />系列标题后新增复选框：多选模式下勾一下即可选中/取消整个系列
+                  <br />（「单册书籍」不是系列，不提供整组勾选）
+                  <br />
+                  <br />
+                  <b>203</b>
+                  <br />整书进度改为手机端自己按章节字数加权（不再依赖电脑端下发）
+                  <br />算字口径与电脑端统一：去掉脚本/样式、解码实体，两端百分比一致
+                  <br />老书会自动重算一次（含之前用旧口径算过的）
+                  <br />
+                  <br />
+                  <b>202</b>
+                  <br />修复：整书进度改为按章节字数加权，翻几页彩页不再显示「已读大半」
+                  <br />（电脑端下发的权威字数优先；老书会自动补算一次）
+                  <br />
+                  <br />
+                  <b>201</b>
+                  <br />修复：从翻页切回滚动时也会回到原来的位置（之前只修好了滚动→翻页）
+                  <br />
+                  <br />
+                  <b>200</b>
+                  <br />修复：阅读中切换滚动 / 翻页模式不再跳回本章开头
+                  <br />
+                  <br />
+                  <b>199</b>
+                  <br />冲突判定放宽：两端都改过就交给你裁决，不再因时间戳太接近而被静默覆盖
+                  <br />
+                  <br />
+                  <b>198</b>
+                  <br />「取消同步」真的会停下来：不再继续下载后面的书，改完的选择也会保留
+                  <br />冲突弹窗逐本生效：之前只有第一本被处理，其余选择会被丢掉
+                  <br />清理网盘时代的残留：界面不再出现「云端 / 网盘」，书籍上传入口已移除
+                  <br />
+                  <br />
                   <b>1.0 正式版</b>
                   <br />局域网直连：同一 WiFi 下与电脑交换阅读记录和书籍，不再依赖网盘
                   <br />记录双向同步：阅读进度、阅读时长、读完标记
@@ -315,9 +352,6 @@ export function SettingsPage() {
               </div>
             </div>
           ) : null}
-        </section>
-
-          </div>
         </section>
 
         {/* ---------- 数据与存储 ---------- */}
@@ -432,7 +466,7 @@ export function SettingsPage() {
           <div className="setting-row">
             <div>
               <div className="setting-label">恢复出厂设置</div>
-              <div className="setting-hint">清空本机的书籍、阅读进度与设置（网盘上的数据不受影响）</div>
+              <div className="setting-hint">清空本机的书籍、阅读进度与设置（电脑上的数据不受影响）</div>
             </div>
             <button
               className="btn btn-ghost"

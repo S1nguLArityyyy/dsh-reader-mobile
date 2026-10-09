@@ -91,8 +91,8 @@ export function Sidebar() {
 
       <div className="sidebar-foot">
         <button className="sync-pill" onClick={() => setSyncModal(true)} title="打开同步状态">
-          <span className={`sync-dot${sync.loggedIn ? ' on' : ''}`} />
-          <span className="sync-label">{sync.loggedIn ? `已连接 ${sync.account ?? ''}` : '网盘未连接'}</span>
+          <span className={`sync-dot${sync.connected ? ' on' : ''}`} />
+          <span className="sync-label">{sync.connected ? `已连接 ${sync.deviceName ?? ''}` : '未连接电脑'}</span>
           <Cloud size={15} />
         </button>
         <button className={`nav-item${route === 'settings' ? ' active' : ''}`} onClick={() => go('settings')}>

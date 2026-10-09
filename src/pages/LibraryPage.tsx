@@ -3,7 +3,6 @@ import {
   BookPlus,
   Check,
   CheckSquare,
-  CloudUpload,
   EyeOff,
   FolderOpen,
   FolderPlus,
@@ -22,7 +21,7 @@ import { BookCover } from '../components/BookCover'
 import { CollectionModal } from '../components/CollectionModal'
 import { Dropdown, EmptyState, ProgressRing } from '../components/ui'
 import { bookAccentColor, percentText, remainingText } from '../lib/format'
-import { groupBooks, sortBooks } from '../lib/library'
+import { SINGLES_KEY, groupBooks, sortBooks } from '../lib/library'
 
 export function LibraryPage() {
   const books = useApp((s) => s.books) ?? []
@@ -233,17 +232,6 @@ export function LibraryPage() {
                   >
                     <FolderOpen size={14} />
                     在文件夹中显示
-                  </button>
-                  <button
-                    disabled
-                    title="网盘同步将在 M5 接入"
-                    onClick={() => {
-                      close()
-                      toast('info', '书籍文件上传将在同步阶段接入')
-                    }}
-                  >
-                    <CloudUpload size={14} />
-                    {book.syncUpload ? '取消上传到网盘' : '上传到网盘'}
                   </button>
                   <hr />
                   <button
@@ -501,25 +489,27 @@ export function LibraryPage() {
               <section className="lib-section" key={group.key}>
                 <div className="lib-section-head">
                   <h2 className="section-title">
-                    {group.title}
+                    <span className="section-name">{group.title}</span>
+                    {/* 标题后接复选框：勾上就是选中/取消整个系列（「单册书籍」不是系列，不给） */}
+                    {selectMode && group.key !== SINGLES_KEY ? (
+                      <button
+                        className={`group-check${group.books.every((b) => selected.includes(b.id)) ? ' on' : ''}`}
+                        title={`选中/取消「${group.title}」全部 ${group.books.length} 本`}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          const ids = group.books.map((b) => b.id)
+                          const allChosen = ids.every((id) => selected.includes(id))
+                          ids.forEach((id) => {
+                            const has = selected.includes(id)
+                            if (allChosen ? has : !has) toggleSelected(id)
+                          })
+                        }}
+                      >
+                        {group.books.every((b) => selected.includes(b.id)) ? <Check size={13} /> : null}
+                      </button>
+                    ) : null}
                     <span className="section-count">{group.books.length}</span>
                     {group.manual ? <span className="group-tag manual">手动合集</span> : null}
-{selectMode ? (
-              <button
-                className={`book-check${group.books.every((b) => selected.includes(b.id)) ? ' on' : ''}`}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  const ids = group.books.map((b) => b.id)
-                  const allChosen = ids.every((id) => selected.includes(id))
-                  ids.forEach((id) => {
-                    const has = selected.includes(id)
-                    if (allChosen ? has : !has) toggleSelected(id)
-                  })
-                }}
-              >
-                {group.books.every((b) => selected.includes(b.id)) ? <Check size={14} /> : null}
-              </button>
-            ) : null}
                     {group.fuzzy ? <span className="group-tag fuzzy">模糊匹配</span> : null}
                   </h2>
                 </div>
@@ -607,7 +597,6 @@ export function LibraryPage() {
               { label: '查看详情', run: () => openDetail(sheetBook.id) },
               { label: '开始阅读', run: () => void openReader(sheetBook.id) },
               { label: '归入合集…', run: () => setCollectionIds([sheetBook.id]) },
-              { label: sheetBook.syncUpload ? '取消上传到网盘' : '上传到网盘', run: () => void updateBook(sheetBook.id, { syncUpload: !sheetBook.syncUpload }) },
               { label: sheetBook.finished ? '标记为未读完' : '标记为已读完', run: () => void updateBook(sheetBook.id, { finished: !sheetBook.finished }) },
               { label: '暂时隐藏', run: () => void updateBook(sheetBook.id, { hidden: true }) },
               { label: '清除阅读记录（保留书）',

@@ -1,7 +1,7 @@
 import { dominantColor } from '../lib/cover-color'
 import { unzipSync } from 'fflate'
 import { readEpubMetaFromBytes } from './epub'
-import { listBooks, putBook, sha1Hex, type StoredBook } from './db'
+import { CHARS_ALGO_VERSION, listBooks, putBook, sha1Hex, type StoredBook, type StoredChapterChars } from './db'
 
 /**
  * 导入一个本地 EPUB 文件。
@@ -33,8 +33,33 @@ export function pickEpubFiles(): Promise<File[]> {
   })
 }
 
-function countWords(html: string): number {
-  return html.replace(/<[^>]+>/g, '').replace(/\s+/g, '').length
+/**
+ * 统计一段 XHTML 里的可见字符数。
+ * ★ 与桌面端 src/main/textstats.ts 的 countVisibleChars 保持完全一致 ★
+ * 两端口径不同的话，同一个阅读位置会算出不同的整书进度（用户会看到两个百分比）。
+ */
+export function countVisibleChars(html: string): number {
+  const withoutHidden = html.replace(/<(script|style|head)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
+  const text = withoutHidden
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#\d+;/g, ' ')
+  return text.replace(/\s+/g, '').length
+}
+
+/** 逐章统计字数（带算法版本，版本变了会被重算） */
+function chapterCharsOf(meta: { chapterHrefs: string[]; opfDir: string }, files: Record<string, Uint8Array>): StoredChapterChars {
+  const counts: number[] = []
+  for (const href of meta.chapterHrefs) {
+    const key = meta.opfDir ? `${meta.opfDir}/${href}` : href
+    const entry = files[key]
+    counts.push(entry ? countVisibleChars(new TextDecoder().decode(entry)) : 0)
+  }
+  return { v: CHARS_ALGO_VERSION, counts }
 }
 
 /** 解析并入库；重复导入同一文件会按 sha1 覆盖（不会产生两本） */
@@ -46,13 +71,9 @@ export async function importEpubFile(file: File): Promise<ImportResult> {
 
     const meta = await readEpubMetaFromBytes(bytes)
     const files = unzipSync(bytes)
-    // 粗略统计字数：只解压 spine 里的 html 条目，避免整本解压（大书会卡）
-    let wordCount = 0
-    for (const href of meta.chapterHrefs) {
-      const key = meta.opfDir ? `${meta.opfDir}/${href}` : href
-      const entry = files[key]
-      if (entry) wordCount += countWords(new TextDecoder().decode(entry))
-    }
+    // ★ 每章分别统计 ★ 整书进度要按章节字数加权（按序号等分会让前置彩页虚增进度）
+    const chapterChars = chapterCharsOf(meta, files)
+    const wordCount = chapterChars.counts.reduce((sum, n) => sum + n, 0)
 
     const record: StoredBook = {
       id,
@@ -71,6 +92,7 @@ export async function importEpubFile(file: File): Promise<ImportResult> {
       opfDir: meta.opfDir,
       toc: meta.toc,
       wordCount,
+      chapterChars,
       addedAt: Date.now()
     }
     await putBook(record)
@@ -98,12 +120,9 @@ export async function importEpubBytes(
     const id = forcedId ?? `sha1:${await sha1Hex(bytes)}`
     const meta = await readEpubMetaFromBytes(bytes)
     const files = unzipSync(bytes)
-    let wordCount = 0
-    for (const href of meta.chapterHrefs) {
-      const key = meta.opfDir ? `${meta.opfDir}/${href}` : href
-      const entry = files[key]
-      if (entry) wordCount += countWords(new TextDecoder().decode(entry))
-    }
+    // ★ 每章分别统计 ★ 整书进度要按章节字数加权（按序号等分会让前置彩页虚增进度）
+    const chapterChars = chapterCharsOf(meta, files)
+    const wordCount = chapterChars.counts.reduce((sum, n) => sum + n, 0)
     const record: StoredBook = {
       id,
       title: meta.title || fileName.replace(/\.epub$/i, ''),
@@ -121,6 +140,7 @@ export async function importEpubBytes(
       opfDir: meta.opfDir,
       toc: meta.toc,
       wordCount,
+      chapterChars,
       addedAt: Date.now()
     }
     await putBook(record)
@@ -159,6 +179,41 @@ export async function backfillCoverColors(): Promise<number> {
     if (!color) continue
     await putBook({ ...book, coverColor: color })
     fixed += 1
+  }
+  return fixed
+}
+
+/**
+ * 给【还没有每章字数】的书补算 chapterChars。
+ *
+ * 为什么必须补：整书进度按章节字数加权，缺这份数据就会退回"按章节序号等分"，
+ * 于是前置彩页（几乎没字）也会各占 1/N，读几页就显示"全书过半"（用户反馈的 bug）。
+ * 旧版本存的书没有这个字段，只能从存下来的 EPUB 字节重新统计一次。
+ * 每本算完立即写回 ✓ 中断也不会白算 ✓ 返回补算的本数。
+ */
+export async function backfillChapterChars(): Promise<number> {
+  const books = await listBooks()
+  let fixed = 0
+  for (const book of books) {
+    // 已有【当前算法版本】的结果就跳过；老数据（无字段 / 旧版本 / 旧数组格式）一律重算
+    const existing = book.chapterChars
+    if (existing && !Array.isArray(existing) && existing.v === CHARS_ALGO_VERSION && existing.counts.length > 0) {
+      continue
+    }
+    try {
+      const files = unzipSync(new Uint8Array(book.epub))
+      const stored = chapterCharsOf(book, files)
+      if (stored.counts.length === 0) continue
+      await putBook({
+        ...book,
+        chapterChars: stored,
+        // 顺手把总字数校准成各章之和，和电脑端的口径保持一致
+        wordCount: stored.counts.reduce((sum, n) => sum + n, 0)
+      })
+      fixed += 1
+    } catch {
+      /* 解包失败就跳过这本，不影响其它书 */
+    }
   }
   return fixed
 }

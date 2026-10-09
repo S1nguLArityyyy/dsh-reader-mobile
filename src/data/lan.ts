@@ -137,9 +137,9 @@ export async function fetchLanRecords(base: string): Promise<{
 export async function pushLanRecords(
   base: string,
   payload: { progress: Record<string, unknown>; sessions: Array<Record<string, unknown>> }
-): Promise<{ ok: boolean; message: string }> {
+): Promise<{ ok: boolean; message: string; pendingConflicts: number }> {
   const root = normalizeBase(base)
-  if (!root) return { ok: false, message: '请先填电脑的局域网地址' }
+  if (!root) return { ok: false, message: '请先填电脑的局域网地址', pendingConflicts: 0 }
   try {
     const response = await CapacitorHttp.request({
       url: `${root}/records`,
@@ -151,10 +151,23 @@ export async function pushLanRecords(
     })
     const body = asRecord(response.data)
     if (response.status !== 200 || body.ok !== true) {
-      return { ok: false, message: `电脑端返回 HTTP ${response.status}` }
+      return { ok: false, message: `电脑端返回 HTTP ${response.status}`, pendingConflicts: 0 }
     }
-    return { ok: true, message: `已推给电脑：进度 +${String(body.progressMerged ?? 0)} · 时长 +${String(body.sessionsMerged ?? 0)}` }
+    // 电脑端把有冲突的那批记录暂缓了（等用户在电脑上裁决），这里如实告诉用户
+    const pendingConflicts = Number(body.pendingConflicts ?? 0)
+    if (pendingConflicts > 0) {
+      return {
+        ok: true,
+        message: `电脑端有 ${pendingConflicts} 处进度冲突待你确认（去电脑上选完再同步）`,
+        pendingConflicts
+      }
+    }
+    return {
+      ok: true,
+      message: `已推给电脑：进度 +${String(body.progressMerged ?? 0)} · 时长 +${String(body.sessionsMerged ?? 0)}`,
+      pendingConflicts: 0
+    }
   } catch (error) {
-    return { ok: false, message: `连不上电脑：${error instanceof Error ? error.message : String(error)}` }
+    return { ok: false, message: `连不上电脑：${error instanceof Error ? error.message : String(error)}`, pendingConflicts: 0 }
   }
 }

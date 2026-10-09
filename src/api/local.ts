@@ -1,9 +1,9 @@
 import { fetchLanBook, fetchLanRecords, listLanBooks, pushLanRecords } from '../data/lan'
 import { unzipSync } from 'fflate'
-import { deleteBook, getBook, listBooks, putBook, type StoredBook } from '../data/db'
+import { deleteBook, getBook, listBooks, putBook, readChapterChars, type StoredBook } from '../data/db'
 import { readChapterFromZip } from '../data/epub'
-import { readSyncState, writeSyncState } from '../data/sync'
-import { backfillCoverColors, coverUrlOf, importEpubBytes, importEpubFile, pickEpubFiles } from '../data/import'
+import { readSyncState, writeSyncState } from '../data/sync-state'
+import { backfillChapterChars, backfillCoverColors, countVisibleChars, coverUrlOf, importEpubBytes, importEpubFile, pickEpubFiles } from '../data/import'
 import type {
   Book,
   BookOpenPayload,
@@ -136,7 +136,8 @@ function toBook(data: ExportedLibrary): Book {
     // 取色来自桌面端对这本书封面的抽取结果（有真封面时必须用它，卡片/详情页配色才和封面对得上）
     coverColor: source.coverFile ? '#264886' : null,
     chapterCount: data.chapters.length,
-    chapterChars: data.chapters.map((chapter) => chapter.html.replace(/<[^>]+>/g, '').length),
+    // 用与桌面端同一套算字口径，否则内置示例书的进度会和别的书不一致
+    chapterChars: data.chapters.map((chapter) => countVisibleChars(chapter.html)),
     wordCount: source.wordCount,
     volume: null,
     seriesKey: null,
@@ -144,8 +145,7 @@ function toBook(data: ExportedLibrary): Book {
     addedAt: Date.parse(data.exportedAt ?? '') || Date.now(),
     lastOpenedAt: null,
     hidden: false,
-    finished: false,
-    syncUpload: false
+    finished: false
   }
 }
 
@@ -265,16 +265,12 @@ function defaultSettings(): Settings {
       readerBackgroundImage: null
     },
     sync: {
-      provider: 'local',
+      /** 电脑端的局域网地址（形如 http://192.168.0.102:8787）；未填为 null */
       localCloudDir: null,
-      webdav: { url: '', username: '' },
-      remoteDir: 'DshReader',
       auto: false,
       onReaderClose: true,
       intervalMinutes: 30,
-      conflictPolicy: 'ask',
-      uploadBooks: false,
-      autoDownloadBooks: false
+      conflictPolicy: 'ask'
     }
   } as unknown as Settings
 }
@@ -318,6 +314,22 @@ let lanConflicts: Array<Record<string, unknown>> = []
 /** 冲突时电脑那一侧的原始记录，用户选"以电脑为准"时用 */
 let lanRemoteProgress: Record<string, Record<string, unknown>> = {}
 
+/**
+ * 「取消同步」的真中断标志。
+ *
+ * 为什么用标志位而不是 AbortController：局域网传输走 CapacitorHttp（原生桥），
+ * 它不接受 AbortSignal，发出去的请求没法真的掐断。
+ * 所以能做到的是：**下一个文件不再下载 / 下一批推送不再发出**，
+ * 当前那一个请求等它自己结束（连接超时 8 秒、读取超时 120 秒封顶）。
+ * 这比原来「只把文案改成已取消、循环照跑」要实在得多。
+ */
+let cancelRequested = false
+
+/** 供 cancel() 调用：请求中断，并在下一次检查点让同步流程退出 */
+function requestCancel(): void {
+  cancelRequested = true
+}
+
 /** 按 id 找书名（冲突弹窗要显示是哪本书） */
 function readBooksTitle(bookId: string): string {
   const cached = bookTitleCache.get(bookId)
@@ -351,9 +363,10 @@ async function syncLanRecords(): Promise<{ ok: boolean; message: string }> {
 
     // ★ 两端都动过 = 冲突 ★ 交给用户裁决，不自动合并
     //   首次同步（lastSyncAt 为 0）没有基准，按"谁新用谁"处理，不打扰用户
+    //   注意：不再要求两边时间戳差 > 1 秒 —— 那条会让"两端都改过但时间接近"的情况被静默覆盖
     const localChanged = mine !== undefined && mineAt > lastSyncAt
     const cloudChanged = remoteAt > lastSyncAt
-    if (lastSyncAt > 0 && mine && localChanged && cloudChanged && Math.abs(mineAt - remoteAt) > 1000) {
+    if (lastSyncAt > 0 && mine && localChanged && cloudChanged) {
       lanRemoteProgress[bookId] = { ...remote, bookId }
       const known = readBooksTitle(bookId)
       lanConflicts.push({
@@ -430,6 +443,7 @@ async function syncLanRecords(): Promise<{ ok: boolean; message: string }> {
 async function downloadLanBooks(): Promise<SyncState> {
   // 顺手给旧书补算封面主色（旧版本记录里没有该字段 ✗ 详情页会显示错误的哈希色 ✓）
   void backfillCoverColors().catch(() => undefined)
+  // 每章字数的补算统一由 listAllBooks 触发（下载流程可能根本不跑：书早就下完了）
   writeSyncState({ phase: 'running', message: '正在读取电脑书库…' })
   const base = String(readSettings().sync.localCloudDir ?? '')
   // 把自己已有的指纹带给电脑 ✓ 让它只回缺的那几本 ✓（列表从 85 条降到 0~几条 ✓）
@@ -442,9 +456,18 @@ async function downloadLanBooks(): Promise<SyncState> {
   const have = new Set((await listBooks()).map((item) => item.id))
   let done = 0
   const failed: string[] = []
-  let gotVolume = 0
-  let gotName = 0
   for (let index = 0; index < listed.books.length; index += 1) {
+    // ★ 取消检查点 ★ 每次取下一本之前看一眼：取消后不再继续下载后面的书
+    if (cancelRequested) {
+      return writeSyncState({
+        phase: 'idle',
+        message: `已取消：已接收 ${done} 本${failed.length > 0 ? `，失败 ${failed.length} 本` : ''}`,
+        connected: true,
+        deviceName: `局域网 · ${base}`,
+        transferred: done,
+        total: listed.books.length
+      })
+    }
     const item = listed.books[index]
     const title = item.name.replace(/\.epub$/i, '')
     writeSyncState({
@@ -461,34 +484,32 @@ async function downloadLanBooks(): Promise<SyncState> {
       failed.push(title)
       continue
     }
-// 下载完直接用电脑端给的元信息写库：书名、原始文件名、卷号都以电脑端为准
-const result = await importEpubBytes(bytes, item.originalName || item.name)
-if (result.book) {
-  const stored = await getBook(result.book.id)
-  if (stored) {
-    await putBook({
-      ...stored,
-      title: item.title || stored.title,
-      fileName: item.originalName || stored.fileName,
-      volume: item.volume ?? stored.volume,
-      coverColor: item.color ?? stored.coverColor
-    })
-    if (item.volume) gotVolume += 1
-    if (item.originalName) gotName += 1
-  }
-  if (!have.has(result.book.id)) done += 1
-} else {
-  failed.push(`${title}（${result.error ?? '解析失败'}）`)
-}
+    // 下载完直接用电脑端给的元信息写库：书名、原始文件名、卷号都以电脑端为准
+    const result = await importEpubBytes(bytes, item.originalName || item.name)
+    if (result.book) {
+      const stored = await getBook(result.book.id)
+      if (stored) {
+        await putBook({
+          ...stored,
+          title: item.title || stored.title,
+          fileName: item.originalName || stored.fileName,
+          volume: item.volume ?? stored.volume,
+          coverColor: item.color ?? stored.coverColor
+        })
+      }
+      if (!have.has(result.book.id)) done += 1
+    } else {
+      failed.push(`${title}（${result.error ?? '解析失败'}）`)
+    }
   }
   return writeSyncState({
     phase: 'idle',
     message:
       failed.length > 0
-        ? `局域网：接收 ${done} 本（卷号 ${gotVolume} / 原名 ${gotName}），失败 ${failed.length} 本：${failed.slice(0, 3).join('、')}`
-        : `局域网：接收 ${done} 本（卷号 ${gotVolume} / 原名 ${gotName}）`,
-    loggedIn: true,
-    account: `局域网 · ${base}`,
+        ? `局域网：接收 ${done} 本，失败 ${failed.length} 本：${failed.slice(0, 3).join('、')}`
+        : `局域网：接收 ${done} 本`,
+    connected: true,
+    deviceName: `局域网 · ${base}`,
     lastSyncAt: Date.now(),
     transferred: done,
     total: listed.books.length
@@ -567,7 +588,8 @@ function toImportedBook(book: StoredBook): Book {
     coverFile: book.cover ? URL.createObjectURL(book.cover) : null,
     coverColor: book.coverColor ?? null,
     chapterCount: book.chapterHrefs.length,
-    chapterChars: [],
+    // ★ 每章字数：整书进度按字数加权（空数组会退回"按章节序号等分"，前置彩页会虚增进度）
+    chapterChars: readChapterChars(book.chapterChars) ?? [],
     wordCount: book.wordCount,
     volume: book.volume ?? null,
     seriesKey: null,
@@ -575,8 +597,7 @@ function toImportedBook(book: StoredBook): Book {
     addedAt: book.addedAt,
     lastOpenedAt: null,
     hidden: false,
-    finished: book.finished === true,
-    syncUpload: false
+    finished: book.finished === true
   }
 }
 
@@ -714,7 +735,17 @@ function saneVolume(text: string): string | null {
 }
 
 
+/** 每章字数的补算只跑一轮，避免每次列书都重启一遍 */
+let chapterCharsBackfillStarted = false
+
 async function listAllBooks(): Promise<Book[]> {
+  // 顺手触发一次「每章字数」补算：整书进度要按字数加权，
+  // 老书没有这份数据会退回"按章节序号等分"，前置彩页就会虚增进度。
+  // 放在列书里而不是下载流程里 —— 书早就下完了，下载流程根本不会再跑。
+  if (!chapterCharsBackfillStarted) {
+    chapterCharsBackfillStarted = true
+    void backfillChapterChars().catch(() => undefined)
+  }
   const builtIn = toBook(await loadLibrary())
   const stored: Book[] = []
   try {
@@ -731,7 +762,8 @@ async function listAllBooks(): Promise<Book[]> {
         coverFile: coverUrlOf(item),
         coverColor: item.coverColor ?? null,
         chapterCount: item.chapterHrefs.length,
-        chapterChars: [],
+        // ★ 必须从存储里带出来：留空会让整书进度退回"按章节序号等分"，前置彩页虚增进度
+        chapterChars: readChapterChars(item.chapterChars) ?? [],
         wordCount: item.wordCount,
         addedAt: item.addedAt,
         // 这两项必须显式带出来，否则会被上面的 ...builtIn 覆盖成默认值
@@ -756,7 +788,7 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '197',
+        version: '204',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',
@@ -1018,9 +1050,13 @@ export function createLocalApi(): unknown {
         const pushed = await pushLanRecords(String(readSettings().sync.localCloudDir ?? ''), {
           progress: readProgress() as unknown as Record<string, unknown>,
           sessions: readSessions() as unknown as Array<Record<string, unknown>>
-        }).catch(() => ({ ok: false, message: '' }))
+        }).catch(() => ({ ok: false, message: '', pendingConflicts: 0 }))
         const result = await syncLanRecords()
         const pushNote = pushed.ok ? pushed.message + '｜' : '推给电脑失败｜'
+        // 电脑端把这次推送暂缓了（等它在电脑上裁决）→ 别推进 lastSyncAt，否则冲突窗口会被推过去
+        if (pushed.pendingConflicts > 0 && lanConflicts.length === 0) {
+          return writeSyncState({ phase: 'conflict', message: pushNote + result.message })
+        }
         if (lanConflicts.length > 0) {
           // 有冲突就不推进 lastSyncAt，等用户裁决完再说
           return writeSyncState({
@@ -1030,13 +1066,21 @@ export function createLocalApi(): unknown {
         }
         return writeSyncState({ phase: 'idle', message: pushNote + result.message, lastSyncAt: Date.now() })
       },
-      connect: async () => downloadLanBooks(),
+      connect: async () => {
+        cancelRequested = false
+        return downloadLanBooks()
+      },
       run: async () => {
+        cancelRequested = false
         // ★ 必须先推 ★ 否则手机这边的进度永远传不到电脑（之前 run 只拉不推）
-        await pushLanRecords(String(readSettings().sync.localCloudDir ?? ""), {
+        const pushed = await pushLanRecords(String(readSettings().sync.localCloudDir ?? ""), {
           progress: readProgress() as unknown as Record<string, unknown>,
           sessions: readSessions() as unknown as Array<Record<string, unknown>>
-        }).catch(() => ({ ok: false, message: "" }))
+        }).catch(() => ({ ok: false, message: "", pendingConflicts: 0 }))
+        // 电脑端暂缓了这批记录 → 先不拉书，等用户在电脑上裁决完
+        if (pushed.pendingConflicts > 0) {
+          return writeSyncState({ phase: 'conflict', message: pushed.message })
+        }
         const merged = await syncLanRecords()
         if (lanConflicts.length > 0) {
           return writeSyncState({
@@ -1048,47 +1092,60 @@ export function createLocalApi(): unknown {
         // 记录合并的结果不要被下书的提示盖掉
         return writeSyncState({ ...bookState, message: `${merged.message}｜${String(bookState.message ?? "")}` })
       },
-      cancel: async () => writeSyncState({ phase: 'idle', message: '已取消' }),
-      downloadAll: () => downloadLanBooks(),
+      /**
+       * 取消同步：置中断标志，正在跑的 run/connect/downloadAll 会在下一个检查点退出。
+       * 注意这里**不能**把 phase 直接改成 idle —— 那会让循环里的检查点误判成"正常结束"，
+       * 于是同步流程继续往下走、并把状态覆盖回 running（就是之前"点了取消没用"的原因）。
+       */
+      cancel: async () => {
+        requestCancel()
+        return writeSyncState({ message: '正在取消…', phase: 'running' })
+      },
+      downloadAll: async () => {
+        cancelRequested = false
+        return downloadLanBooks()
+      },
       conflicts: async () => lanConflicts,
-      /** 用户裁决冲突：local = 以本机为准，cloud = 以电脑为准 */
-      resolve: async (items: Array<{ bookId: string }>, choice: "local" | "cloud") => {
+      /** 用户裁决冲突：逐本给 choice，local = 以本机为准，cloud = 以电脑为准 */
+      resolve: async (choices: Record<string, "local" | "cloud">) => {
         const all = readProgress()
-        let done = 0
-        for (const item of items) {
+        let toLocal = 0
+        let toRemote = 0
+        for (const [bookId, choice] of Object.entries(choices ?? {})) {
           if (choice === "cloud") {
-            const remote = lanRemoteProgress[item.bookId]
-            if (remote) {
-              all[item.bookId] = {
-                bookId: item.bookId,
-                percent: Number(remote.percent ?? 0),
-                chapterIndex: Number(remote.chapterIndex ?? 0),
-                chapterTitle: String(remote.chapterTitle ?? ""),
-                scrollRatio: Number(remote.scrollRatio ?? 0),
-                updatedAt: Number(remote.updatedAt ?? Date.now()),
-                deviceId: String(remote.deviceId ?? "desktop"),
-                rev: Number(remote.rev ?? 1)
-              }
-              done += 1
+            const remote = lanRemoteProgress[bookId]
+            if (!remote) continue
+            all[bookId] = {
+              bookId,
+              percent: Number(remote.percent ?? 0),
+              chapterIndex: Number(remote.chapterIndex ?? 0),
+              chapterTitle: String(remote.chapterTitle ?? ""),
+              scrollRatio: Number(remote.scrollRatio ?? 0),
+              updatedAt: Number(remote.updatedAt ?? Date.now()),
+              deviceId: String(remote.deviceId ?? "desktop"),
+              rev: Number(remote.rev ?? 1)
             }
+            toRemote += 1
           } else {
-            const mine = all[item.bookId]
-            if (mine) {
-              all[item.bookId] = { ...mine, updatedAt: Date.now(), rev: Number(mine.rev ?? 1) + 1 }
-              done += 1
-            }
+            const mine = all[bookId]
+            if (!mine) continue
+            all[bookId] = { ...mine, updatedAt: Date.now(), rev: Number(mine.rev ?? 1) + 1 }
+            toLocal += 1
           }
         }
-        if (done > 0) writeProgress(all)
+        if (toLocal + toRemote > 0) writeProgress(all)
         lanConflicts = []
         lanRemoteProgress = {}
         await pushLanRecords(String(readSettings().sync.localCloudDir ?? ""), {
           progress: readProgress() as unknown as Record<string, unknown>,
           sessions: readSessions() as unknown as Array<Record<string, unknown>>
-        }).catch(() => ({ ok: false, message: "" }))
+        }).catch(() => ({ ok: false, message: "", pendingConflicts: 0 }))
+        const detail = [toLocal > 0 ? `保留本机 ${toLocal} 本` : "", toRemote > 0 ? `采用电脑 ${toRemote} 本` : ""]
+          .filter(Boolean)
+          .join(" · ")
         return writeSyncState({
           phase: "idle",
-          message: `已按${choice === "cloud" ? "电脑" : "本机"}为准解决 ${done} 处冲突`,
+          message: `冲突已解决：${detail || "没有需要改动的书"}`,
           lastSyncAt: Date.now()
         })
       },

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, CloudDownload, RefreshCw } from 'lucide-react'
+import { CloudDownload, RefreshCw } from 'lucide-react'
 import { useApp } from '../store/app'
 import { formatDateTime, fileSizeText } from '../lib/format'
 import { Modal } from './ui'
@@ -141,23 +141,22 @@ export function SyncStatusModal() {
 
       <button className="btn btn-ghost btn-block" onClick={() => void downloadAll()}>
         <CloudDownload size={15} />
-        全部下载云端书籍
+        下载电脑端所有书籍
       </button>
 
-      {!sync.loggedIn ? (
+      {!sync.connected ? (
         <button className="btn btn-ghost btn-block" style={{ marginTop: 10 }} onClick={() => void connectSync()}>
-          连接云端
+          连接电脑
         </button>
       ) : null}
     </Modal>
   )
 }
 
-/** 冲突弹窗：逐本选择保留本地还是使用云端 */
+/** 冲突弹窗：逐本选择保留本机还是采用电脑上的进度 */
 export function ConflictModal() {
   const open = useApp((s) => s.conflictModalOpen)
   const conflicts = useApp((s) => s.conflicts)
-  const preview = useApp((s) => s.conflictPreview)
   const setOpen = useApp((s) => s.setConflictModal)
   const resolve = useApp((s) => s.resolveConflicts)
 
@@ -173,10 +172,11 @@ export function ConflictModal() {
     setChoice(defaults)
   }, [defaults])
 
-  const applyAll = (value: 'local' | 'cloud'): void => {
+  const applyAll = (value: 'local' | 'cloud'): Record<string, 'local' | 'cloud'> => {
     const map: Record<string, 'local' | 'cloud'> = {}
     for (const item of conflicts) map[item.bookId] = value
     setChoice(map)
+    return map
   }
 
   return (
@@ -185,31 +185,23 @@ export function ConflictModal() {
       title="发现阅读进度冲突"
       onClose={() => setOpen(false)}
       width={620}
-      titleExtra={
-        preview ? (
-          <span className="conflict-preview-badge">
-            <AlertTriangle size={12} />
-            设计预览数据
-          </span>
-        ) : null
-      }
       footer={
         <>
-          <button className="btn btn-ghost" onClick={() => applyAll('local')}>
-            全部保留本地
+          <button className="btn btn-ghost" onClick={() => void resolve(applyAll('local'))}>
+            全部保留本机
           </button>
-          <button className="btn btn-ghost" onClick={() => applyAll('cloud')}>
-            全部使用云端
+          <button className="btn btn-ghost" onClick={() => void resolve(applyAll('cloud'))}>
+            全部采用电脑
           </button>
           <div className="reader-spacer" style={{ flex: 1 }} />
-          <button className="btn btn-primary" onClick={() => void resolve(choice[conflicts[0]?.bookId ?? ''] ?? 'local')}>
+          <button className="btn btn-primary" onClick={() => void resolve(choice)}>
             确认并同步
           </button>
         </>
       }
     >
       <p className="conflict-desc">
-        以下书籍在本地与云端都有更新，请选择要保留的进度。选择后另一端会在下次同步时被覆盖。
+        以下书籍在本机与电脑上都有更新，请逐本选择要保留的进度。没有单独改动的按每一本自己的默认值（较新的那份）处理。
       </p>
 
       {conflicts.map((item) => (
@@ -220,7 +212,7 @@ export function ConflictModal() {
               className={`conflict-opt${choice[item.bookId] === 'local' ? ' active' : ''}`}
               onClick={() => setChoice((prev) => ({ ...prev, [item.bookId]: 'local' }))}
             >
-              <b>保留本地</b>
+              <b>保留本机</b>
               <small>
                 进度 {Math.round(item.localPercent * 100)}%
                 <br />
@@ -233,7 +225,7 @@ export function ConflictModal() {
               className={`conflict-opt${choice[item.bookId] === 'cloud' ? ' active' : ''}`}
               onClick={() => setChoice((prev) => ({ ...prev, [item.bookId]: 'cloud' }))}
             >
-              <b>使用云端</b>
+              <b>采用电脑</b>
               <small>
                 进度 {Math.round(item.cloudPercent * 100)}%
                 <br />

@@ -48,38 +48,14 @@ const emptyReader: ReaderState = {
 
 const emptySync: SyncState = {
   phase: 'idle',
-  loggedIn: false,
-  account: null,
+  connected: false,
+  deviceName: null,
   lastSyncAt: null,
   tasks: [],
   transferred: 0,
   total: 0,
   message: null
 }
-
-/** 设计阶段用于预览冲突弹窗的示例数据（真实数据由同步引擎在 M5 提供） */
-const PREVIEW_CONFLICTS: ConflictItem[] = [
-  {
-    bookId: 'preview-1',
-    title: '败犬女主太多了！09',
-    localPercent: 0.62,
-    localAt: Date.now() - 1000 * 60 * 42,
-    localDevice: 'DESKTOP-PC',
-    cloudPercent: 0.35,
-    cloudAt: Date.now() - 1000 * 60 * 60 * 6,
-    cloudDevice: 'Phone'
-  },
-  {
-    bookId: 'preview-2',
-    title: '雪国',
-    localPercent: 0.18,
-    localAt: Date.now() - 1000 * 60 * 60 * 30,
-    localDevice: 'DESKTOP-PC',
-    cloudPercent: 0.74,
-    cloudAt: Date.now() - 1000 * 60 * 25,
-    cloudDevice: 'Phone'
-  }
-]
 
 function errorText(err: unknown): string {
   if (err instanceof Error) return err.message
@@ -132,7 +108,6 @@ interface AppStore {
   stats: StatsPayload | null
   sync: SyncState
   conflicts: ConflictItem[]
-  conflictPreview: boolean
   syncModalOpen: boolean
   conflictModalOpen: boolean
   toasts: ToastItem[]
@@ -188,11 +163,8 @@ interface AppStore {
   runSync: () => Promise<void>
   cancelSync: () => Promise<void>
   connectSync: () => Promise<void>
-  configureWebdav: (payload: { url: string; username: string; password?: string }) => Promise<void>
-  logoutSync: () => Promise<void>
   downloadAll: () => Promise<void>
-  resolveConflicts: (choice: 'local' | 'cloud') => Promise<void>
-  previewConflicts: () => void
+  resolveConflicts: (choices: Record<string, 'local' | 'cloud'>) => Promise<void>
 }
 
 let toastSeq = 0
@@ -206,7 +178,6 @@ export const useApp = create<AppStore>((set, get) => ({
   stats: null,
   sync: emptySync,
   conflicts: [],
-  conflictPreview: false,
   syncModalOpen: false,
   conflictModalOpen: false,
   toasts: [],
@@ -244,7 +215,6 @@ export const useApp = create<AppStore>((set, get) => ({
       })
 
       if (modal === 'sync') set({ syncModalOpen: true })
-      if (modal === 'conflict') get().previewConflicts()
       if (modal === 'detail' && books.length > 0) set({ detailBookId: books[0].id })
 
       // 便于深链 / 截图的状态参数
@@ -391,8 +361,7 @@ export const useApp = create<AppStore>((set, get) => ({
 
   async loadSync() {
     const [sync, conflicts] = await Promise.all([window.api.sync.status(), window.api.sync.conflicts()])
-    const preview = get().conflictPreview
-    set({ sync, conflicts: conflicts.length > 0 ? conflicts : preview ? PREVIEW_CONFLICTS : [] })
+    set({ sync, conflicts })
   },
 
   async refreshAll() {
@@ -544,7 +513,7 @@ export const useApp = create<AppStore>((set, get) => ({
       await get().loadStats()
       if (sync.phase === 'conflict') {
         await get().loadSync()
-        set({ conflictModalOpen: true, conflictPreview: false })
+        set({ conflictModalOpen: true })
         get().toast('info', sync.message ?? '发现阅读进度冲突，请选择保留哪一边')
         return
       }
@@ -570,7 +539,7 @@ export const useApp = create<AppStore>((set, get) => ({
       await get().loadStats()
       if (sync.phase === 'conflict') {
         await get().loadSync()
-        set({ conflictModalOpen: true, conflictPreview: false })
+        set({ conflictModalOpen: true })
         get().toast('info', sync.message ?? '发现阅读进度冲突，请选择保留哪一边')
         return
       }
@@ -592,42 +561,13 @@ export const useApp = create<AppStore>((set, get) => ({
     }
   },
 
-  async configureWebdav(payload) {
+  async resolveConflicts(choices) {
     try {
-      const sync = await window.api.sync.configureWebdav(payload)
-      // 地址与账号落在设置里；应用密码只在主进程，不回传
-      const settings = await window.api.settings.get()
-      set({ sync, settings })
-      await get().loadBooks()
-      await get().loadStats()
-      // 只有面板开着才弹提示，平时安静同步
-      if (sync.message && get().syncModalOpen) get().toast(sync.phase === 'error' ? 'error' : 'info', sync.message)
+      const sync = await window.api.sync.resolve(choices)
+      set({ sync, conflictModalOpen: false, conflicts: [] })
+      get().toast('success', '冲突已解决，正在把结果推给电脑…')
     } catch (err) {
       get().toast('error', errorText(err))
     }
-  },
-
-  async logoutSync() {
-    try {
-      const sync = await window.api.sync.logout()
-      set({ sync })
-      if (sync.message) get().toast('info', sync.message)
-    } catch (err) {
-      get().toast('error', errorText(err))
-    }
-  },
-
-  async resolveConflicts(choice) {
-    try {
-      const sync = await window.api.sync.resolve(get().conflicts, choice)
-      set({ sync, conflictModalOpen: false, conflicts: [], conflictPreview: false })
-      get().toast('success', choice === 'local' ? '已选择保留本地版本' : '已选择使用云端版本')
-    } catch (err) {
-      get().toast('error', errorText(err))
-    }
-  },
-
-  previewConflicts() {
-    set({ conflicts: PREVIEW_CONFLICTS, conflictPreview: true, conflictModalOpen: true })
   }
 }))
