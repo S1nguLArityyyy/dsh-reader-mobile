@@ -4037,4 +4037,23 @@
   .page-layer.entering {
     animation-duration: 0.12s !important;
   }
+
+  /* 弹窗底部按钮换行。
+     手机上 .modal 最宽只有 calc(100vw - 48px) ≈ 342px，减掉左右内边距只剩约 298px，
+     而冲突弹窗底部是三个按钮 + 撑开元素（约 316px）—— .modal-foot 默认不换行，
+     最右边的「确认并同步」就被挤出屏幕，用户看不到也点不到。
+     允许换行后：两个「全部」按钮一行，主操作独占下一行并撑满，反而更好点。 */
+  .modal-foot {
+    flex-wrap: wrap;
+  }
+
+  .modal-foot > .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  /* 主操作（确认/确定）独占一行：手机上更醒目，也不会和次要按钮挤成半宽 */
+  .modal-foot > .btn-primary {
+    flex-basis: 100%;
+  }
 }

@@ -44,6 +44,7 @@ export function LibraryPage() {
   const openReader = useApp((s) => s.openReader)
   const openDetail = useApp((s) => s.openDetail)
   const refreshAll = useApp((s) => s.refreshAll)
+  const syncRecordsOnly = useApp((s) => s.syncRecordsOnly)
   const removeBook = useApp((s) => s.removeBook)
   const updateBook = useApp((s) => s.updateBook)
   const saveSettings = useApp((s) => s.saveSettings)
@@ -277,11 +278,12 @@ export function LibraryPage() {
           本地书库
         </h1>
         <div className="head-actions">
-          {/* 只同步阅读记录，不下载书，秒级完成 */}
+          {/* 只同步阅读记录，不下载书，秒级完成。走 store 的动作，
+              这样产生冲突时裁决弹窗会立刻弹出来（原来直接调 api 会绕过它） */}
             <button
             className="icon-btn"
             title="只同步阅读记录（不下载书）"
-            onClick={() => void (window.api as unknown as { sync: { recordsOnly: () => Promise<unknown> } }).sync.recordsOnly().then(() => refreshAll())}
+            onClick={() => void syncRecordsOnly()}
           >
               <RefreshCw size={19} />
           </button>

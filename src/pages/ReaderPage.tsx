@@ -284,21 +284,35 @@ export function ReaderPage() {
   /* ---------- 恢复上次位置 ---------- */
   useEffect(() => {
     if (!bookId || !html) return
-    if (restoredBook.current === bookId) return
-    restoredBook.current = bookId
     const saved = reader.scrollRatio
-    if (saved <= 0.01) return
-    if (mode === 'scroll') {
-      const el = bodyRef.current
-      if (el) {
-        el.scrollTop = (el.scrollHeight - el.clientHeight) * saved
-        ratioRef.current = saved
-        setRatio(saved)
-      }
-    } else {
-      setPage(Math.max(0, Math.min(pages - 1, Math.round(saved * pages))))
+    if (saved <= 0.01) {
+      restoredBook.current = bookId
+      return
     }
-  }, [bookId, html, mode, pages, reader.scrollRatio])
+
+    // 滚动模式：容器高度一就绪就能定位
+    if (mode === 'scroll') {
+      if (restoredBook.current === bookId) return
+      const el = bodyRef.current
+      if (!el || el.clientHeight === 0) return // 还没量到高度，等下一轮
+      restoredBook.current = bookId
+      el.scrollTop = (el.scrollHeight - el.clientHeight) * saved
+      ratioRef.current = saved
+      setRatio(saved)
+      return
+    }
+
+    // 翻页模式：必须等分页数算出来再定位。
+    // 此前在 html 一就绪就 setPage(saved * pages)，而那时 pages 还是初始值 1，
+    // 乘出来是 0 —— 于是"退出再进"总是回到本章开头（用户反馈的 bug）。
+    // 这里不设一次性守卫，pages 变化时会重算一次，setPage 对同值不会再触发渲染。
+    if (bodySize.width <= 0 || pages <= 0) return
+    const target = Math.max(0, Math.min(pages - 1, Math.round(saved * pages)))
+    restoredBook.current = bookId
+    ratioRef.current = saved
+    setRatio(saved)
+    setPage(target)
+  }, [bookId, html, mode, pages, reader.scrollRatio, bodySize.width])
 
   /* ---------- 翻页 ---------- */
   const turn = useCallback(

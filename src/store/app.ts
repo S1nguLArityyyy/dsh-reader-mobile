@@ -145,6 +145,10 @@ interface AppStore {
   loadStats: () => Promise<void>
   loadSync: () => Promise<void>
   refreshAll: () => Promise<void>
+  /** 同步收尾：有冲突就弹裁决窗，返回是否已接管 */
+  finishSync: (sync: SyncState) => Promise<boolean>
+  /** 只同步阅读记录（书库页的同步按钮） */
+  syncRecordsOnly: () => Promise<void>
 
   importDialog: () => Promise<void>
   importFolderDialog: () => Promise<void>
@@ -494,6 +498,40 @@ export const useApp = create<AppStore>((set, get) => ({
     }
   },
 
+  /**
+   * 同步结束后的统一收尾：只要有冲突就把裁决弹窗弹出来（不管用户是从哪里点的同步），
+   * 否则只更新状态。
+   * 返回 true 表示已经接管（有冲突），调用方不用再弹提示。
+   */
+  async finishSync(sync: SyncState): Promise<boolean> {
+    set({ sync })
+    if (sync.phase !== 'conflict') return false
+    await get().loadSync()
+    set({ conflictModalOpen: true })
+    get().toast('info', sync.message ?? '发现阅读进度冲突，请选择保留哪一边')
+    return true
+  },
+
+  /**
+   * 书库页那个「同步」按钮用这个：只同步记录，不拉书。
+   * 以前它直接调 window.api.sync.recordsOnly()，绕过了冲突处理 ——
+   * 于是只有在同步面板里点「立即同步」才会看到冲突弹窗（用户反馈的 bug）。
+   */
+  async syncRecordsOnly() {
+    try {
+      const sync = (await (
+        window.api as unknown as { sync: { recordsOnly: () => Promise<SyncState> } }
+      ).sync.recordsOnly()) as SyncState
+      await get().loadBooks()
+      await get().loadStats()
+      if (await get().finishSync(sync)) return
+      // 平时安静同步：只有面板开着才提示
+      if (sync.message && get().syncModalOpen) get().toast(sync.phase === 'error' ? 'error' : 'info', sync.message)
+    } catch (err) {
+      get().toast('error', `同步失败：${errorText(err)}`)
+    }
+  },
+
   setSyncModal(open) {
     set({ syncModalOpen: open })
     if (open) void get().loadSync()
@@ -507,16 +545,10 @@ export const useApp = create<AppStore>((set, get) => ({
   async runSync() {
     try {
       const sync = await window.api.sync.run()
-      set({ sync })
-      // 进度 / 今日阅读 / 统计都可能变了，立刻刷新（自动同步那条路走 sync:changed 事件）
+      // 进度 / 今日阅读 / 统计都可能变了，立刻刷新
       await get().loadBooks()
       await get().loadStats()
-      if (sync.phase === 'conflict') {
-        await get().loadSync()
-        set({ conflictModalOpen: true })
-        get().toast('info', sync.message ?? '发现阅读进度冲突，请选择保留哪一边')
-        return
-      }
+      if (await get().finishSync(sync)) return
       // 只有面板开着才弹提示，平时安静同步
       if (sync.message && get().syncModalOpen) get().toast(sync.phase === 'error' ? 'error' : 'info', sync.message)
     } catch (err) {
