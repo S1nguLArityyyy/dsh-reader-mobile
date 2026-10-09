@@ -825,7 +825,8 @@ export function createLocalApi(): unknown {
   return {
     app: {
       info: async () => ({
-        version: '209',
+        // 对外显示的版本（正式版）。内部构建编号仍在 build.gradle 的 versionCode 里递增
+        version: '1.0',
         dataDir: '本地数据（导出）',
         booksDir: 'data/',
         coversDir: 'data/',

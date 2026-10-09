@@ -288,6 +288,11 @@ export function SettingsPage() {
               >
                 <h3 style={{ margin: '0 0 12px' }}>更新记录</h3>
                 <div className="setting-desc" style={{ lineHeight: 1.9 }}>
+                  <b>1.0</b>
+                  <br />正式版：局域网同步、阅读进度与时长、已读完标记、冲突裁决
+                  <br />书库整组勾选 · 翻页模式按章翻阅回到该章上次位置
+                  <br />
+                  <br />
                   <b>209</b>
                   <br />修复：向前翻回上一章时回到【那一章上次读到的位置】（之前会落到章首或章末）
                   <br />阅读时长上报从每 20 秒改成约 5 秒，最近阅读卡片更跟手
