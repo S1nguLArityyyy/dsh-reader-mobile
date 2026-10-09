@@ -1,5 +1,8 @@
 # Dsh Reader 手机端（安卓）
 
+> **本项目由 AI 编写**
+
+
 Dsh Reader 的安卓客户端，基于 Capacitor + React + TypeScript。
 
 > **同步功能需要配合电脑端使用。** 手机端本身是一个纯本地阅读器 —— 书存在手机里、
