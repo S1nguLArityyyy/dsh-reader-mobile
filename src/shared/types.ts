@@ -42,8 +42,6 @@ export interface Book {
   hidden: boolean
   /** 用户手动标记为已读完 */
   finished?: boolean
-  /** 是否将该书文件上传到网盘（按需上传策略，默认 false） */
-  syncUpload: boolean
 }
 
 /** 单本书的阅读进度（未来与手机端交换的最小单元） */
@@ -94,29 +92,14 @@ export interface ReaderSettings {
 }
 
 export interface SyncSettings {
-  /**
-   * 云端类型：
-   *  - local：本机目录当云端（用于测试与单机兜底）
-   *  - webdav：标准协议，坚果云等（应用密码走 HTTP Basic）
-   *  - baidu：应用内登录百度网盘（路线已定，尚未接入）
-   */
-  provider: 'local' | 'webdav' | 'baidu' | 'lan'
-  /** provider = local 时用作「云端」根目录的本机路径；未选择为 null */
+  /** 电脑端的局域网地址（形如 http://192.168.0.102:8787）；未填为 null */
   localCloudDir: string | null
-  /** provider = webdav 时的连接信息（应用密码单独加密存放，不在这里） */
-  webdav: { url: string; username: string }
   /** 自动同步开关 */
   auto: boolean
   /** 退出阅读（合上书）时立刻同步一次：进度与阅读时长 */
   onReaderClose: boolean
   intervalMinutes: number
-  /** 网盘中的同步文件夹 */
-  remoteDir: string
   conflictPolicy: 'ask' | 'local' | 'cloud'
-  /** 书籍本体同步总开关（默认关；打开后按每本书的 Book.syncUpload 勾选上传） */
-  uploadBooks: boolean
-  /** 云端出现本机没有的书时自动下载（默认关，避免悄悄吃流量） */
-  autoDownloadBooks: boolean
 }
 
 export interface AppearanceSettings {
@@ -219,8 +202,10 @@ export interface SyncTask {
 
 export interface SyncState {
   phase: SyncPhase
-  loggedIn: boolean
-  account: string | null
+  /** 是否已经连上电脑（局域网直传，没有账号概念） */
+  connected: boolean
+  /** 连的是哪台电脑，形如「局域网 · http://192.168.0.102:8787」 */
+  deviceName: string | null
   lastSyncAt: number | null
   tasks: SyncTask[]
   transferred: number

@@ -31,9 +31,32 @@ export interface StoredBook {
   opfDir: string
   toc: TocNode[]
   wordCount: number
+  /**
+   * 每章可见字符数：整书进度必须按它加权，
+   * 否则前置彩页（几乎没字）会按"章节序号"吃掉一大截进度。
+   * v 是算字算法版本，与当前版本不一致时会重算（老数据没有这个字段，也会被补算）。
+   */
+  chapterChars?: StoredChapterChars
   addedAt: number
   /** 用户手动标记为已读完 */
   finished?: boolean
+}
+
+/** 每章字数 + 算法版本（版本变了要重算，否则两端进度口径不一致） */
+export interface StoredChapterChars {
+  v: number
+  counts: number[]
+}
+
+/** 当前算字算法版本：改 countVisibleChars 的实现时必须 +1，否则旧数据不会重算 */
+export const CHARS_ALGO_VERSION = 2
+
+/** 读每章字数：兼容早期的纯数组格式 */
+export function readChapterChars(stored: StoredChapterChars | number[] | undefined): number[] | null {
+  if (!stored) return null
+  if (Array.isArray(stored)) return stored.length > 0 ? stored : null
+  if (stored.v !== CHARS_ALGO_VERSION) return null
+  return stored.counts.length > 0 ? stored.counts : null
 }
 
 function openDb(): Promise<IDBDatabase> {
